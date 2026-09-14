@@ -1,24 +1,17 @@
 import { Check, ArrowRight, X } from "lucide-react"
 import { cn } from "@/lib/utils"
-
-export type Status = "todo" | "postponed" | "canceled" | "done"
-
-export interface Todo {
-  id: string
-  text: string
-  status: Status
-}
+import type { Todo, TodoStatus } from "@/db/schema"
 
 interface TodoItemProps {
   todo: Todo
-  onSetStatus: (id: string, status: Status) => void
+  onSetStatus: (id: string, status: TodoStatus) => void
 }
 
 export function TodoItem({ todo, onSetStatus }: TodoItemProps) {
   const { id, text, status } = todo
 
   // Clicking an active status again returns the item to plain "todo".
-  const toggle = (next: Status) => onSetStatus(id, status === next ? "todo" : next)
+  const toggle = (next: TodoStatus) => onSetStatus(id, status === next ? "todo" : next)
 
   return (
     <li className="flex items-start gap-3 py-2.5 sm:gap-4 sm:py-3">

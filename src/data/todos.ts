@@ -1,0 +1,57 @@
+import { createServerFn } from '@tanstack/react-start'
+
+import { todoStatuses, type TodoStatus } from '@/db/schema'
+
+const dateKeyPattern = /^\d{4}-\d{2}-\d{2}$/
+
+function isDateKey(value: string) {
+  if (!dateKeyPattern.test(value)) return false
+
+  const [year, month, day] = value.split('-').map(Number)
+  const date = new Date(Date.UTC(year, month - 1, day))
+
+  return date.toISOString().slice(0, 10) === value
+}
+
+function validateCreateInput(input: unknown) {
+  if (!input || typeof input !== 'object') throw new Error('Invalid todo')
+
+  const { text, scheduledDate } = input as Record<string, unknown>
+  if (typeof text !== 'string' || !text.trim()) throw new Error('Todo text is required')
+  if (typeof scheduledDate !== 'string' || !isDateKey(scheduledDate)) {
+    throw new Error('A valid scheduled date is required')
+  }
+
+  return { text: text.trim(), scheduledDate }
+}
+
+function validateStatusInput(input: unknown) {
+  if (!input || typeof input !== 'object') throw new Error('Invalid todo update')
+
+  const { id, status } = input as Record<string, unknown>
+  if (typeof id !== 'string' || !id) throw new Error('Todo id is required')
+  if (typeof status !== 'string' || !todoStatuses.includes(status as TodoStatus)) {
+    throw new Error('Invalid todo status')
+  }
+
+  return { id, status: status as TodoStatus }
+}
+
+export const getTodos = createServerFn({ method: 'GET' }).handler(async () => {
+  const { listTodos } = await import('./todos.server')
+  return listTodos()
+})
+
+export const createTodo = createServerFn({ method: 'POST' })
+  .validator(validateCreateInput)
+  .handler(async ({ data }) => {
+    const { insertTodo } = await import('./todos.server')
+    return insertTodo(data)
+  })
+
+export const updateTodoStatus = createServerFn({ method: 'POST' })
+  .validator(validateStatusInput)
+  .handler(async ({ data }) => {
+    const { setTodoStatus } = await import('./todos.server')
+    return setTodoStatus(data)
+  })

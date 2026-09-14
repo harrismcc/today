@@ -1,28 +1,32 @@
 import { useMemo, useState } from "react"
 import { Plus, ChevronLeft, ChevronRight } from "lucide-react"
-import { TodoItem, type Todo, type Status } from "./todo-item"
+import { useServerFn } from "@tanstack/react-start"
+import { TodoItem } from "./todo-item"
 import { useDoneSound } from "@/hooks/use-done-sound"
+import { createTodo, updateTodoStatus } from "@/data/todos"
+import type { Todo, TodoStatus } from "@/db/schema"
 
 // A stable local YYYY-MM-DD key for a given date.
 function dateKey(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
 }
 
-const TODAY_KEY = dateKey(new Date())
-
-const INITIAL: Record<string, Todo[]> = {
-  [TODAY_KEY]: [
-    { id: "1", text: "Water the plants", status: "todo" },
-    { id: "2", text: "Reply to Sam's email", status: "todo" },
-    { id: "3", text: "Draft the weekly notes", status: "todo" },
-  ],
+function groupByDay(todos: Todo[]) {
+  return todos.reduce<Record<string, Todo[]>>((byDay, todo) => {
+    const day = byDay[todo.scheduledDate] ?? []
+    day.push(todo)
+    byDay[todo.scheduledDate] = day
+    return byDay
+  }, {})
 }
 
-export function TodoList() {
-  const [byDay, setByDay] = useState<Record<string, Todo[]>>(INITIAL)
+export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
+  const [byDay, setByDay] = useState(() => groupByDay(initialTodos))
   const [offset, setOffset] = useState(0)
   const [draft, setDraft] = useState("")
   const playDone = useDoneSound()
+  const createTodoMutation = useServerFn(createTodo)
+  const updateTodoStatusMutation = useServerFn(updateTodoStatus)
 
   // The date currently in view, derived from a day offset relative to today.
   const viewed = useMemo(() => {
@@ -35,21 +39,23 @@ export function TodoList() {
   const key = dateKey(viewed)
   const todos = byDay[key] ?? []
 
-  const setStatus = (id: string, status: Status) => {
+  const setStatus = async (id: string, status: TodoStatus) => {
+    const updated = await updateTodoStatusMutation({ data: { id, status } })
     if (status === "done") playDone()
     setByDay((prev) => ({
       ...prev,
-      [key]: (prev[key] ?? []).map((t) => (t.id === id ? { ...t, status } : t)),
+      [key]: (prev[key] ?? []).map((todo) => (todo.id === id ? updated : todo)),
     }))
   }
 
-  const addTodo = (e: React.FormEvent) => {
+  const addTodo = async (e: React.FormEvent) => {
     e.preventDefault()
     const text = draft.trim()
     if (!text) return
+    const todo = await createTodoMutation({ data: { text, scheduledDate: key } })
     setByDay((prev) => ({
       ...prev,
-      [key]: [...(prev[key] ?? []), { id: crypto.randomUUID(), text, status: "todo" }],
+      [key]: [...(prev[key] ?? []), todo],
     }))
     setDraft("")
   }
