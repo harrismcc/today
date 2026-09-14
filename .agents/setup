@@ -28,3 +28,4 @@ fi
 run_step 'Enable Corepack package-manager shims' corepack enable
 run_step 'Install the package manager pinned in package.json' corepack install
 run_step 'Install dependencies from pnpm-lock.yaml' pnpm install --frozen-lockfile
+run_step 'Apply local database migrations' pnpm db:migrate

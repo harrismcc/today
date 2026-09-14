@@ -19,6 +19,7 @@ dist/
 
 # Amp orb runtime files
 .amp/portals/*
+.amp/in/artifacts/
 
 # Local SQLite databases
 data/*.db

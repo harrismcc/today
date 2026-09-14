@@ -1,0 +1,9 @@
+services:
+  web:
+    command: >-
+      pnpm db:migrate &&
+      BETTER_AUTH_URL="${PUBLIC_URL%/}" pnpm dev --host 0.0.0.0 --port "$PORT"
+    health: /login
+    portal:
+      title: Today
+      description: Create or use a passkey to sign in.

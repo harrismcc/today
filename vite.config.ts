@@ -6,6 +6,7 @@ import { defineConfig } from 'vite'
 
 export default defineConfig({
   server: {
+    allowedHosts: process.env.AMP_ORB ? true : undefined,
     port: 3000,
   },
   resolve: {
