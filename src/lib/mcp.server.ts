@@ -164,13 +164,23 @@ function accessToken(request: Request) {
 
 function authenticatedMcpHandler(request: Request) {
   const issuer = new URL('/api/auth', request.url).href
+  const auth = createAuth()
 
-  return createAuth().$context.then(({ internalAdapter }) =>
+  return auth.$context.then(({ internalAdapter }) =>
     createMcpProtectedRequestHandler(
       {
         issuer,
         audience: mcpResource,
-        jwksUrl: `${issuer}/jwks`,
+        // Cloudflare blocks a Worker from fetching its own public URL. Better Auth
+        // accepts a JWKS loader at runtime even though its public type only allows a URL.
+        jwksUrl: (async () => {
+          const response = await auth.handler(
+            new Request(`${issuer}/jwks`, {
+              headers: { accept: 'application/json' },
+            }),
+          )
+          return response.ok ? response.json() : undefined
+        }) as unknown as string,
         requiredScopes: [mcpScope],
         dpop: { replayStore: createDpopReplayStore(internalAdapter) },
       },
