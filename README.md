@@ -1,4 +1,4 @@
-# Task Tracker
+# Today
 
 TanStack Start application deployed as a Cloudflare Worker with a Cloudflare D1 database.
 
@@ -26,11 +26,11 @@ pnpm wrangler secret put BETTER_AUTH_SECRET
 Then deploy the Worker and apply the database migrations:
 
 ```sh
-pnpm deploy
+pnpm run deploy
 pnpm db:migrate:remote
 ```
 
-The first deploy automatically provisions the `task-tracker` D1 database and writes its Cloudflare ID into `wrangler.jsonc`. Commit that generated ID so future deploys and remote migration commands target the same database.
+The Worker uses the `task-tracker` D1 database configured in `wrangler.jsonc`.
 
 The default auth host allowlist accepts the generated `*.workers.dev` address. Before attaching a custom domain, add its hostname to the comma-separated `BETTER_AUTH_ALLOWED_HOSTS` value in `wrangler.jsonc`.
 

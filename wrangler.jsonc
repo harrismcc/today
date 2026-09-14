@@ -1,22 +1,30 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "task-tracker",
+  "name": "today",
   "compatibility_date": "2026-09-14",
   "compatibility_flags": ["nodejs_compat"],
   "main": "@tanstack/react-start/server-entry",
+  "workers_dev": true,
   "observability": {
     "enabled": true
   },
   "vars": {
-    "BETTER_AUTH_ALLOWED_HOSTS": "*.workers.dev"
+    "BETTER_AUTH_ALLOWED_HOSTS": "*.workers.dev,today.harrismccullers.com"
   },
   "secrets": {
     "required": ["BETTER_AUTH_SECRET"]
   },
+  "routes": [
+    {
+      "pattern": "today.harrismccullers.com",
+      "custom_domain": true
+    }
+  ],
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "task-tracker",
+      "database_id": "581ebffa-7f24-41c6-b29e-52bae7ba82ce",
       "migrations_dir": "drizzle"
     }
   ]
