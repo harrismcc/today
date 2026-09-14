@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+run_step() {
+  local label="$1"
+  shift
+  local started_at=$SECONDS
+
+  printf '==> %s\n' "$label"
+  "$@"
+  printf '<== %s (%ss)\n' "$label" "$((SECONDS - started_at))"
+}
+
+command -v node >/dev/null || {
+  echo 'Node.js is required but is not installed.' >&2
+  exit 1
+}
+
+command -v npm >/dev/null || {
+  echo 'npm is required but is not installed.' >&2
+  exit 1
+}
+
+if [[ "$(corepack --version 2>/dev/null || true)" != '0.34.6' ]]; then
+  run_step 'Install a pnpm 12-compatible Corepack' npm install --global corepack@0.34.6
+fi
+
+run_step 'Enable Corepack package-manager shims' corepack enable
+run_step 'Install the package manager pinned in package.json' corepack install
+run_step 'Install dependencies from pnpm-lock.yaml' pnpm install --frozen-lockfile

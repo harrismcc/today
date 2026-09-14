@@ -15,3 +15,6 @@ node_modules
 .output/
 dist/
 .DS_Store
+
+# Amp orb runtime files
+.amp/portals/*
