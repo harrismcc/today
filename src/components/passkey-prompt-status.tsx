@@ -14,7 +14,7 @@ export function PasskeyPromptStatus({
   return (
     <p
       role={pending ? 'status' : undefined}
-      className="mt-3 text-center text-sm text-muted-foreground motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1 motion-safe:duration-200"
+      className="mt-3 text-center text-sm text-muted-foreground motion-safe:animate-in motion-safe:fade-in motion-safe:duration-150 motion-safe:ease-out"
     >
       {embedded
         ? `Passkey prompts cannot open inside the preview. Continue in the new tab, then choose ${action} again.`

@@ -188,33 +188,3 @@
     background-size: 24px 24px;
   }
 }
-
-@keyframes done-pop {
-  0% {
-    transform: scale(1);
-  }
-  40% {
-    transform: scale(1.28) rotate(-8deg);
-  }
-  100% {
-    transform: scale(1) rotate(0deg);
-  }
-}
-
-@keyframes strike-in {
-  from {
-    transform: scaleX(0);
-  }
-  to {
-    transform: scaleX(1);
-  }
-}
-
-.animate-done-pop {
-  animation: done-pop 0.42s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.animate-strike-in {
-  transform-origin: left;
-  animation: strike-in 0.35s ease-out forwards;
-}

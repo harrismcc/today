@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react"
 import { Plus, ChevronLeft, ChevronRight, LogOut } from "lucide-react"
+import { AnimatePresence } from "motion/react"
 import { useServerFn } from "@tanstack/react-start"
 import { TodoItem } from "./todo-item"
 import { Button } from "@/components/ui/button"
@@ -112,7 +113,7 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
               type="button"
               variant="quiet"
               size="icon"
-              onClick={() => setOffset((o) => o - 1)}
+              onClick={() => setOffset((current) => current - 1)}
               aria-label="Previous day"
               className="rounded-md"
             >
@@ -122,7 +123,7 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
               type="button"
               variant="quiet"
               size="icon"
-              onClick={() => setOffset((o) => o + 1)}
+              onClick={() => setOffset((current) => current + 1)}
               aria-label="Next day"
               className="rounded-md"
             >
@@ -148,16 +149,18 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
         <h1 className="mt-1 font-hand text-3xl leading-tight text-foreground sm:mt-2 sm:text-5xl">{fullDate}</h1>
       </header>
 
-      <ul className="divide-y divide-border/60">
-        {todos.map((todo) => (
-          <TodoItem
-            key={todo.id}
-            todo={todo}
-            onSetStatus={setStatus}
-            onPostpone={postpone}
-            onDelete={removeTodo}
-          />
-        ))}
+      <ul key={key} className="divide-y divide-border/60">
+        <AnimatePresence initial={false} mode="popLayout">
+          {todos.map((todo) => (
+            <TodoItem
+              key={todo.id}
+              todo={todo}
+              onSetStatus={setStatus}
+              onPostpone={postpone}
+              onDelete={removeTodo}
+            />
+          ))}
+        </AnimatePresence>
       </ul>
 
       <form onSubmit={addTodo} className="flex items-center gap-3 border-t border-border/60 py-2.5 sm:gap-4 sm:py-3">

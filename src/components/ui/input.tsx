@@ -10,8 +10,8 @@ const inputVariants = cva(
     variants: {
       variant: {
         default:
-          "h-8 w-full rounded-lg border border-input px-2.5 py-1 text-base transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:bg-input/50 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80",
-        plain: "border-0 p-0 shadow-none",
+          "h-8 w-full rounded-lg border border-input px-2.5 py-1 text-base transition-[color,border-color,box-shadow,background-color] duration-100 ease-out focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:bg-input/50 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80",
+        plain: "border-0 p-0 shadow-none transition-colors duration-100 ease-out",
       },
     },
     defaultVariants: {

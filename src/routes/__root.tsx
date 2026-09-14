@@ -3,6 +3,7 @@ import {
   Scripts,
   createRootRoute,
 } from '@tanstack/react-router'
+import { MotionConfig } from 'motion/react'
 import { useEffect, type ReactNode } from 'react'
 
 import appCss from '@/styles/app.css?url'
@@ -54,7 +55,7 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
         <HeadContent />
       </head>
       <body className="font-sans antialiased">
-        {children}
+        <MotionConfig reducedMotion="user">{children}</MotionConfig>
         <PwaRegistration />
         <Scripts />
       </body>

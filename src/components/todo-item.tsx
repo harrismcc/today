@@ -1,4 +1,5 @@
 import { Check, ArrowRight, X } from "lucide-react"
+import { AnimatePresence, motion } from "motion/react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { Todo, TodoStatus } from "@/db/schema"
@@ -17,7 +18,18 @@ export function TodoItem({ todo, onSetStatus, onPostpone, onDelete }: TodoItemPr
   const toggle = (next: TodoStatus) => onSetStatus(id, status === next ? "todo" : next)
 
   return (
-    <li className="flex items-start gap-3 py-2.5 sm:gap-4 sm:py-3">
+    <motion.li
+      layout="position"
+      initial={{ opacity: 0, y: 3 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -2 }}
+      transition={{
+        duration: 0.12,
+        ease: "easeOut",
+        layout: { duration: 0.12, ease: "easeOut" },
+      }}
+      className="flex items-start gap-3 py-2.5 sm:gap-4 sm:py-3"
+    >
       <Button
         type="button"
         variant="status"
@@ -30,7 +42,19 @@ export function TodoItem({ todo, onSetStatus, onPostpone, onDelete }: TodoItemPr
           status === "done" && "border-done bg-done/10",
         )}
       >
-        {status === "done" && <Check className="size-3.5 text-done animate-done-pop sm:size-4" strokeWidth={3} />}
+        <AnimatePresence initial={false}>
+          {status === "done" && (
+            <motion.span
+              key="check"
+              initial={{ opacity: 0, scale: 0.92 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.94 }}
+              transition={{ duration: 0.12, ease: "easeOut" }}
+            >
+              <Check className="size-3.5 text-done sm:size-4" strokeWidth={3} />
+            </motion.span>
+          )}
+        </AnimatePresence>
       </Button>
 
       {/* Text and the two inline actions share one wrapping block, so the arrow
@@ -38,7 +62,7 @@ export function TodoItem({ todo, onSetStatus, onPostpone, onDelete }: TodoItemPr
       <p className="min-w-0 flex-1 font-hand text-lg leading-relaxed sm:text-xl">
         <span
           className={cn(
-            "transition-colors",
+            "transition-colors duration-100",
             status === "done" && "text-muted-foreground line-through",
             status === "postponed" && "italic text-postponed",
           )}
@@ -69,6 +93,6 @@ export function TodoItem({ todo, onSetStatus, onPostpone, onDelete }: TodoItemPr
           </Button>
         </span>
       </p>
-    </li>
+    </motion.li>
   )
 }
