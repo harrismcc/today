@@ -17,6 +17,7 @@ function pwaServiceWorker(): Plugin {
           'fonts/**/*.woff2',
           'apple-icon.png',
           'icon*.{png,svg}',
+          'logo.png',
           'pwa-*.png',
           'manifest.webmanifest',
         ],

@@ -41,7 +41,6 @@ export const Route = createRootRoute({
         href: '/icon-dark-32x32.png',
         media: '(prefers-color-scheme: dark)',
       },
-      { rel: 'icon', href: '/icon.svg', type: 'image/svg+xml' },
       { rel: 'apple-touch-icon', href: '/apple-icon.png' },
     ],
   }),
