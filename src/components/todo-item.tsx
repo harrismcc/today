@@ -6,10 +6,11 @@ import type { Todo, TodoStatus } from "@/db/schema"
 interface TodoItemProps {
   todo: Todo
   onSetStatus: (id: string, status: TodoStatus) => void
+  onPostpone: (id: string) => void
   onDelete: (id: string) => void
 }
 
-export function TodoItem({ todo, onSetStatus, onDelete }: TodoItemProps) {
+export function TodoItem({ todo, onSetStatus, onPostpone, onDelete }: TodoItemProps) {
   const { id, text, status } = todo
 
   // Clicking an active status again returns the item to plain "todo".
@@ -50,13 +51,9 @@ export function TodoItem({ todo, onSetStatus, onDelete }: TodoItemProps) {
             type="button"
             variant="quiet"
             size="icon-xs"
-            onClick={() => toggle("postponed")}
-            aria-label="Postpone to tomorrow"
-            aria-pressed={status === "postponed"}
-            className={cn(
-              "rounded-md hover:text-postponed",
-              status === "postponed" && "text-postponed",
-            )}
+            onClick={() => onPostpone(id)}
+            aria-label="Move to next day"
+            className="rounded-md hover:text-postponed"
           >
             <ArrowRight className="size-4 sm:size-[1.125rem]" strokeWidth={2.5} />
           </Button>

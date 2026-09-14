@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull } from 'drizzle-orm'
+import { and, asc, eq, isNull, sql } from 'drizzle-orm'
 
 import { db } from '@/db/index.server'
 import { todos, type TodoStatus } from '@/db/schema'
@@ -41,6 +41,25 @@ export async function setTodoStatus(
     .update(todos)
     .set({ status: input.status, updatedAt: new Date() })
     .where(and(eq(todos.id, input.id), eq(todos.userId, userId), isNull(todos.deletedAt)))
+    .returning()
+    .get()
+
+  if (!todo) {
+    throw new Error('Todo not found')
+  }
+
+  return todo
+}
+
+export async function postponeTodoToNextDay(userId: string, id: string) {
+  const todo = await db
+    .update(todos)
+    .set({
+      status: 'postponed',
+      scheduledDate: sql`date(${todos.scheduledDate}, '+1 day')`,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(todos.id, id), eq(todos.userId, userId), isNull(todos.deletedAt)))
     .returning()
     .get()
 

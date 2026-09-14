@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { useDoneSound } from "@/hooks/use-done-sound"
-import { createTodo, deleteTodo, updateTodoStatus } from "@/data/todos"
+import { createTodo, deleteTodo, postponeTodo, updateTodoStatus } from "@/data/todos"
 import type { Todo, TodoStatus } from "@/db/schema"
 import { authClient } from "@/lib/auth-client"
 
@@ -31,6 +31,7 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
   const playDone = useDoneSound()
   const createTodoMutation = useServerFn(createTodo)
   const deleteTodoMutation = useServerFn(deleteTodo)
+  const postponeTodoMutation = useServerFn(postponeTodo)
   const updateTodoStatusMutation = useServerFn(updateTodoStatus)
 
   // The date currently in view, derived from a day offset relative to today.
@@ -60,6 +61,20 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
         Object.entries(prev).map(([day, todos]) => [day, todos.filter((todo) => todo.id !== id)]),
       ),
     )
+  }
+
+  const postpone = async (id: string) => {
+    const updated = await postponeTodoMutation({ data: { id } })
+    setByDay((prev) => {
+      const withoutTodo = Object.fromEntries(
+        Object.entries(prev).map(([day, todos]) => [day, todos.filter((todo) => todo.id !== id)]),
+      )
+
+      return {
+        ...withoutTodo,
+        [updated.scheduledDate]: [...(withoutTodo[updated.scheduledDate] ?? []), updated],
+      }
+    })
   }
 
   const addTodo = async (e: React.FormEvent) => {
@@ -135,7 +150,13 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
 
       <ul className="divide-y divide-border/60">
         {todos.map((todo) => (
-          <TodoItem key={todo.id} todo={todo} onSetStatus={setStatus} onDelete={removeTodo} />
+          <TodoItem
+            key={todo.id}
+            todo={todo}
+            onSetStatus={setStatus}
+            onPostpone={postpone}
+            onDelete={removeTodo}
+          />
         ))}
       </ul>
 
