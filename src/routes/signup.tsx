@@ -1,32 +1,40 @@
-import { Fingerprint, KeyRound } from 'lucide-react'
+import { Fingerprint } from 'lucide-react'
 import { useState } from 'react'
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
+import { useServerFn } from '@tanstack/react-start'
 
 import { Button } from '@/components/ui/button'
-import { getSession } from '@/lib/auth-functions'
 import { authClient } from '@/lib/auth-client'
+import { getSession, startPasskeyRegistration } from '@/lib/auth-functions'
 
-export const Route = createFileRoute('/login')({
+export const Route = createFileRoute('/signup')({
   beforeLoad: async () => {
     if (await getSession()) throw redirect({ to: '/' })
   },
-  component: Login,
+  component: Signup,
 })
 
 function errorMessage(error: { message?: string } | null) {
   return error?.message || 'Something went wrong. Please try again.'
 }
 
-function Login() {
+function Signup() {
+  const createRegistration = useServerFn(startPasskeyRegistration)
   const [error, setError] = useState('')
   const [pending, setPending] = useState(false)
 
-  const signIn = async () => {
+  const register = async () => {
     setError('')
     setPending(true)
 
     try {
-      const result = await authClient.signIn.passkey()
+      const context = await createRegistration()
+      const result = await authClient.passkey.addPasskey({
+        context,
+        createSession: true,
+        name: 'Primary passkey',
+      })
+
       if (result.error) {
         setError(errorMessage(result.error))
         return
@@ -34,7 +42,7 @@ function Login() {
 
       window.location.replace('/')
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Passkey sign-in failed')
+      setError(cause instanceof Error ? cause.message : 'Passkey creation failed')
     } finally {
       setPending(false)
     }
@@ -59,27 +67,27 @@ function Login() {
         </div>
 
         <h1 className="font-hand text-4xl leading-tight text-foreground">
-          Welcome back
+          Create your account
         </h1>
 
         <Button
           type="button"
           size="lg"
           className="mt-6 h-11 w-full text-sm"
-          onClick={signIn}
+          onClick={register}
           disabled={pending || unsupported}
         >
-          <KeyRound data-icon="inline-start" />
-          {pending ? 'Waiting for your passkey…' : 'Sign in with a passkey'}
+          <Fingerprint data-icon="inline-start" />
+          {pending ? 'Creating your passkey…' : 'Create a passkey'}
         </Button>
 
         <p className="mt-5 text-center text-sm text-muted-foreground">
-          First time here?{' '}
+          Already have an account?{' '}
           <Link
-            to="/signup"
+            to="/login"
             className="font-medium text-foreground underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground"
           >
-            Create an account
+            Sign in
           </Link>
         </p>
 

@@ -9,6 +9,8 @@ import { db } from '@/db/index.server'
 import * as schema from '@/db/schema'
 import { authSecret, parseRegistrationContext } from '@/lib/auth-registration.server'
 
+const userDisplayName = 'Today user'
+
 export const auth = betterAuth({
   appName: 'Today',
   baseURL: {
@@ -40,7 +42,7 @@ export const auth = betterAuth({
           return {
             id: registration.id,
             name: `${registration.id.replaceAll('-', '')}@passkey.invalid`,
-            displayName: registration.name,
+            displayName: userDisplayName,
           }
         },
         afterVerification: async ({ context, ctx, verification }) => {
@@ -65,7 +67,7 @@ export const auth = betterAuth({
           await ctx.context.internalAdapter.createUser(
             {
               id: registration.id,
-              name: registration.name,
+              name: userDisplayName,
               email: `${registration.id.replaceAll('-', '')}@passkey.invalid`,
               emailVerified: false,
             },

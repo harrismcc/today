@@ -7,7 +7,6 @@ const developmentSecret = 'task-tracker-development-secret-change-me'
 type RegistrationContext = {
   expiresAt: number
   id: string
-  name: string
 }
 
 export function authSecret() {
@@ -25,11 +24,10 @@ function signatureFor(payload: string) {
   return createHmac('sha256', authSecret()).update(payload).digest('base64url')
 }
 
-export function createRegistrationContext(name: string) {
+export function createRegistrationContext() {
   const registration: RegistrationContext = {
     expiresAt: Date.now() + registrationLifetimeMs,
     id: randomUUID(),
-    name,
   }
   const payload = Buffer.from(JSON.stringify(registration)).toString('base64url')
 
@@ -59,7 +57,6 @@ export function parseRegistrationContext(token: string | null | undefined) {
 
   if (
     typeof registration.id !== 'string' ||
-    typeof registration.name !== 'string' ||
     typeof registration.expiresAt !== 'number' ||
     registration.expiresAt < Date.now()
   ) {
