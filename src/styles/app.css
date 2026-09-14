@@ -48,6 +48,8 @@
   --color-todo: var(--todo);
   --color-postponed: var(--postponed);
   --color-done: var(--done);
+  --color-texture: var(--texture);
+  --shadow-card: var(--card-shadow);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -82,6 +84,9 @@
   --todo: oklch(0.53 0.02 62);
   --postponed: oklch(0.58 0.11 55);
   --done: oklch(0.52 0.1 145);
+  --texture: oklch(0.55 0.03 70);
+  --card-shadow-color: oklch(0.29 0.018 60);
+  --card-shadow: 0 24px 70px -42px color-mix(in oklab, var(--card-shadow-color) 55%, transparent);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -177,8 +182,8 @@
   body {
     @apply bg-background text-foreground;
     background-image:
-      radial-gradient(oklch(0.55 0.03 70 / 0.05) 1px, transparent 1px),
-      radial-gradient(oklch(0.55 0.03 70 / 0.04) 1px, transparent 1px);
+      radial-gradient(color-mix(in oklab, var(--texture) 5%, transparent) 1px, transparent 1px),
+      radial-gradient(color-mix(in oklab, var(--texture) 4%, transparent) 1px, transparent 1px);
     background-position: 0 0, 12px 12px;
     background-size: 24px 24px;
   }

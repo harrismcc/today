@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 
 import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 import { getSession } from '@/lib/auth-functions'
 import { authClient } from '@/lib/auth-client'
 
@@ -45,7 +46,7 @@ function Login() {
 
   return (
     <main className="flex min-h-screen items-center justify-center px-4 py-10">
-      <section className="w-full max-w-md rounded-2xl border border-border/70 bg-card/75 p-6 shadow-[0_24px_70px_-42px_oklch(0.29_0.018_60/0.55)] backdrop-blur-sm sm:p-8">
+      <Card className="w-full max-w-md gap-0 overflow-visible rounded-2xl border border-border/70 bg-card/75 p-6 shadow-card ring-0 backdrop-blur-sm sm:p-8">
         <div className="mb-8 flex items-center gap-3">
           <img src="/logo.png" alt="" className="size-14 object-contain" />
           <div>
@@ -92,7 +93,7 @@ function Login() {
             {error}
           </p>
         )}
-      </section>
+      </Card>
     </main>
   )
 }

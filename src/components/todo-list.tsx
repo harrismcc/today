@@ -2,6 +2,9 @@ import { useMemo, useState } from "react"
 import { Plus, ChevronLeft, ChevronRight, LogOut } from "lucide-react"
 import { useServerFn } from "@tanstack/react-start"
 import { TodoItem } from "./todo-item"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Separator } from "@/components/ui/separator"
 import { useDoneSound } from "@/hooks/use-done-sound"
 import { createTodo, deleteTodo, updateTodoStatus } from "@/data/todos"
 import type { Todo, TodoStatus } from "@/db/schema"
@@ -90,31 +93,41 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
         <div className="flex items-center justify-between">
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground sm:text-sm">{relative}</p>
           <div className="flex items-center gap-1">
-            <button
+            <Button
               type="button"
+              variant="quiet"
+              size="icon"
               onClick={() => setOffset((o) => o - 1)}
               aria-label="Previous day"
-              className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              className="rounded-md"
             >
               <ChevronLeft className="size-5" />
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="quiet"
+              size="icon"
               onClick={() => setOffset((o) => o + 1)}
               aria-label="Next day"
-              className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              className="rounded-md"
             >
               <ChevronRight className="size-5" />
-            </button>
-            <span className="mx-1 h-4 w-px bg-border" aria-hidden="true" />
-            <button
+            </Button>
+            <Separator
+              aria-hidden="true"
+              orientation="vertical"
+              className="mx-1 data-vertical:h-4 data-vertical:self-auto"
+            />
+            <Button
               type="button"
+              variant="quiet"
+              size="icon"
               onClick={signOut}
               aria-label="Sign out"
-              className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              className="rounded-md"
             >
               <LogOut className="size-4" />
-            </button>
+            </Button>
           </div>
         </div>
         <h1 className="mt-1 font-hand text-3xl leading-tight text-foreground sm:mt-2 sm:text-5xl">{fullDate}</h1>
@@ -130,7 +143,8 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
         <span className="flex size-5 shrink-0 items-center justify-center text-muted-foreground sm:size-6">
           <Plus className="size-4 sm:size-[1.125rem]" />
         </span>
-        <input
+        <Input
+          variant="plain"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder="Add something for today…"

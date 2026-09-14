@@ -1,4 +1,5 @@
 import { Check, ArrowRight, X } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { Todo, TodoStatus } from "@/db/schema"
 
@@ -16,19 +17,20 @@ export function TodoItem({ todo, onSetStatus, onDelete }: TodoItemProps) {
 
   return (
     <li className="flex items-start gap-3 py-2.5 sm:gap-4 sm:py-3">
-      <button
+      <Button
         type="button"
+        variant="status"
+        size="icon-xs"
         onClick={() => toggle("done")}
         aria-label={status === "done" ? "Mark as not done" : "Mark as done"}
         aria-pressed={status === "done"}
         className={cn(
-          "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md border border-border transition-colors sm:mt-1 sm:size-6",
-          "hover:border-done/70",
+          "mt-0.5 size-5 rounded-md sm:mt-1 sm:size-6",
           status === "done" && "border-done bg-done/10",
         )}
       >
         {status === "done" && <Check className="size-3.5 text-done animate-done-pop sm:size-4" strokeWidth={3} />}
-      </button>
+      </Button>
 
       {/* Text and the two inline actions share one wrapping block, so the arrow
           and X always follow the end of the (possibly wrapped) text. */}
@@ -44,26 +46,30 @@ export function TodoItem({ todo, onSetStatus, onDelete }: TodoItemProps) {
         </span>
 
         <span className="ml-2 inline-flex items-center gap-1 align-middle whitespace-nowrap sm:ml-3 sm:gap-1.5">
-          <button
+          <Button
             type="button"
+            variant="quiet"
+            size="icon-xs"
             onClick={() => toggle("postponed")}
             aria-label="Postpone to tomorrow"
             aria-pressed={status === "postponed"}
             className={cn(
-              "inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-postponed",
+              "rounded-md hover:text-postponed",
               status === "postponed" && "text-postponed",
             )}
           >
             <ArrowRight className="size-4 sm:size-[1.125rem]" strokeWidth={2.5} />
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="quiet"
+            size="icon-xs"
             onClick={() => onDelete(id)}
             aria-label="Delete this item"
-            className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-destructive"
+            className="rounded-md hover:text-destructive"
           >
             <X className="size-4 sm:size-[1.125rem]" strokeWidth={2.5} />
-          </button>
+          </Button>
         </span>
       </p>
     </li>
