@@ -14,7 +14,9 @@ import { Route as _versionRouteImport } from './routes/[_]_version'
 import { Route as ConsentRouteImport } from './routes/consent'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as McpRouteImport } from './routes/mcp'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as VerifyEmailRouteImport } from './routes/verify-email'
 import { Route as DotwellKnownSplatRouteImport } from './routes/[.]well-known.$'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
@@ -43,9 +45,19 @@ const McpRoute = McpRouteImport.update({
   path: '/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VerifyEmailRoute = VerifyEmailRouteImport.update({
+  id: '/verify-email',
+  path: '/verify-email',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DotwellKnownSplatRoute = DotwellKnownSplatRouteImport.update({
@@ -65,7 +77,9 @@ export interface FileRoutesByFullPath {
   '/consent': typeof ConsentRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/.well-known/$': typeof DotwellKnownSplatRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
@@ -75,7 +89,9 @@ export interface FileRoutesByTo {
   '/consent': typeof ConsentRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/.well-known/$': typeof DotwellKnownSplatRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
@@ -86,7 +102,9 @@ export interface FileRoutesById {
   '/consent': typeof ConsentRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/.well-known/$': typeof DotwellKnownSplatRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
@@ -98,7 +116,9 @@ export interface FileRouteTypes {
     | '/consent'
     | '/login'
     | '/mcp'
+    | '/reset-password'
     | '/signup'
+    | '/verify-email'
     | '/.well-known/$'
     | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
@@ -108,7 +128,9 @@ export interface FileRouteTypes {
     | '/consent'
     | '/login'
     | '/mcp'
+    | '/reset-password'
     | '/signup'
+    | '/verify-email'
     | '/.well-known/$'
     | '/api/auth/$'
   id:
@@ -118,7 +140,9 @@ export interface FileRouteTypes {
     | '/consent'
     | '/login'
     | '/mcp'
+    | '/reset-password'
     | '/signup'
+    | '/verify-email'
     | '/.well-known/$'
     | '/api/auth/$'
   fileRoutesById: FileRoutesById
@@ -129,7 +153,9 @@ export interface RootRouteChildren {
   ConsentRoute: typeof ConsentRoute
   LoginRoute: typeof LoginRoute
   McpRoute: typeof McpRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
+  VerifyEmailRoute: typeof VerifyEmailRoute
   DotwellKnownSplatRoute: typeof DotwellKnownSplatRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
@@ -171,11 +197,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof McpRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/signup': {
       id: '/signup'
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/verify-email': {
+      id: '/verify-email'
+      path: '/verify-email'
+      fullPath: '/verify-email'
+      preLoaderRoute: typeof VerifyEmailRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/.well-known/$': {
@@ -201,7 +241,9 @@ const rootRouteChildren: RootRouteChildren = {
   ConsentRoute: ConsentRoute,
   LoginRoute: LoginRoute,
   McpRoute: McpRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
+  VerifyEmailRoute: VerifyEmailRoute,
   DotwellKnownSplatRoute: DotwellKnownSplatRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }

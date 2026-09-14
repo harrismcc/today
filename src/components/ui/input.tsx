@@ -30,7 +30,6 @@ function Input({
     <InputPrimitive
       type={type}
       data-slot="input"
-      data-foley-type=""
       className={cn(inputVariants({ variant, className }))}
       {...props}
     />

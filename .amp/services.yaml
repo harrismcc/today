@@ -6,4 +6,4 @@ services:
     health: /login
     portal:
       title: Today
-      description: Create or use a passkey to sign in.
+      description: Sign in or create an account with email and password.

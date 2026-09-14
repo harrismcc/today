@@ -38,6 +38,6 @@ Leave the non-production deploy command as `npx wrangler versions upload`. This 
 
 The Worker uses the `task-tracker` D1 database configured in `wrangler.jsonc`.
 
-The default auth host allowlist accepts the generated `*.workers.dev` address. Before attaching a custom domain, add its hostname to the comma-separated `BETTER_AUTH_ALLOWED_HOSTS` value in `wrangler.jsonc`.
+The auth host allowlist contains only the app's exact Workers address and custom domain. Add other app-controlled hostnames to the comma-separated `BETTER_AUTH_ALLOWED_HOSTS` value in `wrangler.jsonc`.
 
 For later schema changes, update `src/db/schema.ts`, run `pnpm db:generate`, review the generated SQL, and apply it locally. Production migrations are applied automatically when the production branch deploys. Keep migrations compatible with the currently deployed Worker because they run immediately before the new Worker is published.

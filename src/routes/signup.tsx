@@ -1,15 +1,16 @@
-import { Fingerprint } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { useServerFn } from '@tanstack/react-start'
 import { play } from '@foleyjs/react'
 
-import { PasskeyPromptStatus } from '@/components/passkey-prompt-status'
+import { AuthShell } from '@/components/auth-shell'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { authClient } from '@/lib/auth-client'
-import { getSession, startPasskeyRegistration } from '@/lib/auth-functions'
-import { isOAuthContinuation } from '@/lib/oauth-continuation'
+import { getSession } from '@/lib/auth-functions'
+import {
+  oauthAuthorizationFromSearch,
+  withOAuthAuthorization,
+} from '@/lib/oauth-continuation'
 
 export const Route = createFileRoute('/signup')({
   beforeLoad: async () => {
@@ -23,34 +24,37 @@ function errorMessage(error: { message?: string } | null) {
 }
 
 function Signup() {
-  const [oauthSearch, setOAuthSearch] = useState('')
-  const createRegistration = useServerFn(startPasskeyRegistration)
+  const [oauthAuthorization, setOAuthAuthorization] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmation, setConfirmation] = useState('')
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
   const [pending, setPending] = useState(false)
-  const [embedded, setEmbedded] = useState(false)
 
   useEffect(() => {
-    setEmbedded(window.self !== window.top)
-    if (isOAuthContinuation(window.location.search)) {
-      setOAuthSearch(window.location.search)
-    }
+    setOAuthAuthorization(oauthAuthorizationFromSearch(window.location.search) ?? '')
   }, [])
 
-  const register = async () => {
-    if (window.self !== window.top) {
-      window.open(window.location.href, '_blank', 'noopener,noreferrer')
+  const register = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setError('')
+    setNotice('')
+
+    if (password !== confirmation) {
+      play('error')
+      setError('Passwords do not match.')
       return
     }
 
-    setError('')
     setPending(true)
 
     try {
-      const context = await createRegistration()
-      const result = await authClient.passkey.addPasskey({
-        context,
-        createSession: true,
-        name: 'Primary passkey',
+      const result = await authClient.signUp.email({
+        email,
+        name: 'Today user',
+        password,
+        callbackURL: oauthAuthorizationFromSearch(window.location.search) ?? '/',
       })
 
       if (result.error) {
@@ -59,83 +63,109 @@ function Signup() {
         return
       }
 
-      if (!isOAuthContinuation(window.location.search)) window.location.replace('/')
+      play('success')
+      setNotice('Check your email to verify your account, then you’ll be signed in.')
+      setPassword('')
+      setConfirmation('')
     } catch (cause) {
       play('error')
-      setError(cause instanceof Error ? cause.message : 'Passkey creation failed')
+      setError(cause instanceof Error ? cause.message : 'Unable to create your account')
     } finally {
       setPending(false)
     }
   }
 
-  const unsupported =
-    typeof window !== 'undefined' && !('PublicKeyCredential' in window)
-
   return (
-    <main className="flex min-h-screen items-center justify-center px-4 py-10">
-      <Card className="w-full max-w-md gap-0 overflow-visible rounded-2xl border border-border/70 bg-card/75 p-6 shadow-card ring-0 backdrop-blur-sm sm:p-8">
-        <div className="mb-8 flex items-center gap-3">
-          <img src="/logo.png" alt="" className="size-14 object-contain" />
-          <div>
-            <p className="font-hand text-2xl leading-none">Today</p>
-            <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">
-              A simple list
-            </p>
-          </div>
-        </div>
+    <AuthShell title="Create your account">
+      <form className="mt-6 space-y-4" onSubmit={register}>
+        <label className="block text-sm font-medium" htmlFor="email">
+          Email
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            className="mt-1.5 h-11"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            disabled={pending}
+            required
+          />
+        </label>
 
-        <h1 className="font-hand text-4xl leading-tight text-foreground">
-          Create your account
-        </h1>
+        <label className="block text-sm font-medium" htmlFor="password">
+          Password
+          <Input
+            id="password"
+            name="password"
+            type="password"
+            autoComplete="new-password"
+            className="mt-1.5 h-11"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            disabled={pending}
+            minLength={15}
+            maxLength={128}
+            aria-describedby="password-requirements"
+            required
+          />
+          <span
+            id="password-requirements"
+            className="mt-1.5 block text-xs font-normal text-muted-foreground"
+          >
+            Use at least 15 characters.
+          </span>
+        </label>
+
+        <label className="block text-sm font-medium" htmlFor="confirmation">
+          Confirm password
+          <Input
+            id="confirmation"
+            name="confirmation"
+            type="password"
+            autoComplete="new-password"
+            className="mt-1.5 h-11"
+            value={confirmation}
+            onChange={(event) => setConfirmation(event.target.value)}
+            disabled={pending}
+            minLength={15}
+            maxLength={128}
+            required
+          />
+        </label>
 
         <Button
-          type="button"
+          type="submit"
           size="lg"
-          className="mt-6 h-11 w-full text-sm"
-          onClick={register}
-          disabled={pending || unsupported}
+          className="h-11 w-full text-sm"
+          disabled={pending}
+          sound={false}
         >
-          <Fingerprint data-icon="inline-start" />
-          {embedded
-            ? 'Open a new tab to create a passkey'
-            : pending
-              ? 'Creating your passkey…'
-              : 'Create a passkey'}
+          {pending ? 'Creating account…' : 'Create account'}
         </Button>
-        <PasskeyPromptStatus
-          action="create a passkey"
-          embedded={embedded}
-          pending={pending}
-        />
+      </form>
 
-        <p className="mt-5 text-center text-sm text-muted-foreground">
-          Already have an account?{' '}
-          <a
-            href={`/login${oauthSearch}`}
-            data-foley-click="swoosh"
-            onClick={(event) => {
-              if (!isOAuthContinuation(window.location.search)) return
-              event.preventDefault()
-              window.location.assign(`/login${window.location.search}`)
-            }}
-            className="font-medium text-foreground underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground"
-          >
-            Sign in
-          </a>
+      {error && (
+        <p role="alert" className="mt-4 text-sm text-destructive">
+          {error}
         </p>
+      )}
+      {notice && (
+        <p role="status" className="mt-4 text-sm text-done">
+          {notice}
+        </p>
+      )}
 
-        {unsupported && (
-          <p role="alert" className="mt-4 text-sm text-destructive">
-            This browser does not support passkeys. Try a current version of Chrome,
-            Safari, Firefox, or Edge.
-          </p>
-        )}
-        {error && !unsupported && (
-          <p role="alert" className="mt-4 text-sm text-destructive">
-            {error}
-          </p>
-        )}
-      </Card>
-    </main>
+      <p className="mt-5 text-center text-sm text-muted-foreground">
+        Already have an account?{' '}
+        <a
+          href={withOAuthAuthorization('/login', oauthAuthorization)}
+          data-foley-click="swoosh"
+          className="font-medium text-foreground underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground"
+        >
+          Sign in
+        </a>
+      </p>
+    </AuthShell>
   )
 }

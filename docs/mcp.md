@@ -6,7 +6,7 @@ Today’s MCP server lets an AI assistant view and manage your todos. Connect th
 
 ## Sign-in
 
-Connecting opens Today in your browser. Sign in with your passkey, review the requested access, and choose whether to allow it. You do not need to create or copy an API token, and the assistant can access only your todos.
+Connecting opens Today in your browser. Sign in with your email and password, review the requested access, and choose whether to allow it. You do not need to create or copy an API token, and the assistant can access only your todos.
 
 ## Tools
 

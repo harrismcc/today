@@ -9,10 +9,11 @@
     "enabled": true
   },
   "vars": {
-    "BETTER_AUTH_ALLOWED_HOSTS": "*.workers.dev,today.harrismccullers.com"
+    "AUTH_EMAIL_FROM": "Today <onboarding@resend.dev>",
+    "BETTER_AUTH_ALLOWED_HOSTS": "today.harrismcc.workers.dev,today.harrismccullers.com"
   },
   "secrets": {
-    "required": ["BETTER_AUTH_SECRET"]
+    "required": ["BETTER_AUTH_SECRET", "RESEND_API_KEY"]
   },
   "routes": [
     {

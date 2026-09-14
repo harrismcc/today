@@ -1,20 +1,34 @@
-import { KeyRound } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { play } from '@foleyjs/react'
 
-import { PasskeyPromptStatus } from '@/components/passkey-prompt-status'
+import { AuthShell } from '@/components/auth-shell'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { getSession } from '@/lib/auth-functions'
 import { authClient } from '@/lib/auth-client'
-import { isOAuthContinuation } from '@/lib/oauth-continuation'
+import {
+  getOAuthAuthorizationPath,
+  isOAuthContinuation,
+  oauthAuthorizationFromSearch,
+  withOAuthAuthorization,
+} from '@/lib/oauth-continuation'
 
 export const Route = createFileRoute('/login')({
   beforeLoad: async ({ location }) => {
-    if (!isOAuthContinuation(location.search) && (await getSession())) {
-      throw redirect({ to: '/' })
+    if (isOAuthContinuation(location.search)) return
+
+    const session = await getSession()
+    if (!session) return
+
+    const continuation = getOAuthAuthorizationPath(
+      (location.search as Record<string, unknown>).oauth,
+    )
+    if (continuation) {
+      throw redirect({ href: continuation })
     }
+
+    throw redirect({ to: '/' })
   },
   component: Login,
 })
@@ -24,112 +38,167 @@ function errorMessage(error: { message?: string } | null) {
 }
 
 function Login() {
-  const [oauthSearch, setOAuthSearch] = useState('')
+  const [oauthAuthorization, setOAuthAuthorization] = useState('')
+  const [mode, setMode] = useState<'sign-in' | 'forgot'>('sign-in')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
   const [pending, setPending] = useState(false)
-  const [embedded, setEmbedded] = useState(false)
 
   useEffect(() => {
-    setEmbedded(window.self !== window.top)
-    if (isOAuthContinuation(window.location.search)) {
-      setOAuthSearch(window.location.search)
-    }
+    const search = new URLSearchParams(window.location.search)
+    setOAuthAuthorization(oauthAuthorizationFromSearch(window.location.search) ?? '')
+    if (search.get('forgot') === 'true') setMode('forgot')
   }, [])
 
-  const signIn = async () => {
-    if (window.self !== window.top) {
-      window.open(window.location.href, '_blank', 'noopener,noreferrer')
-      return
-    }
-
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
     setError('')
+    setNotice('')
     setPending(true)
 
     try {
-      const result = await authClient.signIn.passkey()
+      const continuation = oauthAuthorizationFromSearch(window.location.search)
+
+      if (mode === 'forgot') {
+        const result = await authClient.requestPasswordReset({
+          email,
+          redirectTo: withOAuthAuthorization('/reset-password', continuation),
+        })
+
+        if (result.error) {
+          play('error')
+          setError(errorMessage(result.error))
+          return
+        }
+
+        play('success')
+        setNotice('If an account exists for that email, a reset link is on its way.')
+        return
+      }
+
+      const result = await authClient.signIn.email({
+        email,
+        password,
+        ...(continuation && {
+          callbackURL: continuation,
+        }),
+      })
       if (result.error) {
+        if (result.error.status === 403) {
+          play('success')
+          setNotice('Check your email for a verification link, then sign in again.')
+          return
+        }
+
         play('error')
         setError(errorMessage(result.error))
         return
       }
 
-      if (!isOAuthContinuation(window.location.search)) window.location.replace('/')
+      play('success')
+      window.location.replace(continuation ?? '/')
     } catch (cause) {
       play('error')
-      setError(cause instanceof Error ? cause.message : 'Passkey sign-in failed')
+      setError(cause instanceof Error ? cause.message : 'Unable to continue')
     } finally {
       setPending(false)
     }
   }
 
-  const unsupported =
-    typeof window !== 'undefined' && !('PublicKeyCredential' in window)
-
   return (
-    <main className="flex min-h-screen items-center justify-center px-4 py-10">
-      <Card className="w-full max-w-md gap-0 overflow-visible rounded-2xl border border-border/70 bg-card/75 p-6 shadow-card ring-0 backdrop-blur-sm sm:p-8">
-        <div className="mb-8 flex items-center gap-3">
-          <img src="/logo.png" alt="" className="size-14 object-contain" />
-          <div>
-            <p className="font-hand text-2xl leading-none">Today</p>
-            <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">
-              A simple list
-            </p>
-          </div>
-        </div>
+    <AuthShell title={mode === 'sign-in' ? 'Welcome back' : 'Reset your password'}>
+      <form className="mt-6 space-y-4" onSubmit={submit}>
+        <label className="block space-y-1.5 text-sm font-medium" htmlFor="email">
+          Email
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            className="mt-1.5 h-11"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            disabled={pending}
+            required
+          />
+        </label>
 
-        <h1 className="font-hand text-4xl leading-tight text-foreground">
-          Welcome back
-        </h1>
+        {mode === 'sign-in' && (
+          <label className="block space-y-1.5 text-sm font-medium" htmlFor="password">
+            Password
+            <Input
+              id="password"
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              className="mt-1.5 h-11"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              disabled={pending}
+              minLength={8}
+              maxLength={128}
+              required
+            />
+          </label>
+        )}
 
         <Button
-          type="button"
+          type="submit"
           size="lg"
-          className="mt-6 h-11 w-full text-sm"
-          onClick={signIn}
-          disabled={pending || unsupported}
+          className="h-11 w-full text-sm"
+          disabled={pending}
+          sound={false}
         >
-          <KeyRound data-icon="inline-start" />
-          {embedded
-            ? 'Open a new tab to sign in'
-            : pending
-              ? 'Waiting for your passkey…'
-              : 'Sign in with a passkey'}
+          {pending
+            ? mode === 'sign-in'
+              ? 'Signing in…'
+              : 'Sending…'
+            : mode === 'sign-in'
+              ? 'Sign in'
+              : 'Email reset link'}
         </Button>
-        <PasskeyPromptStatus
-          action="sign in"
-          embedded={embedded}
-          pending={pending}
-        />
+      </form>
 
-        <p className="mt-5 text-center text-sm text-muted-foreground">
-          First time here?{' '}
-          <a
-            href={`/signup${oauthSearch}`}
-            data-foley-click="swoosh"
-            onClick={(event) => {
-              if (!isOAuthContinuation(window.location.search)) return
-              event.preventDefault()
-              window.location.assign(`/signup${window.location.search}`)
-            }}
-            className="font-medium text-foreground underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground"
-          >
-            Create an account
-          </a>
+      {error && (
+        <p role="alert" className="mt-4 text-sm text-destructive">
+          {error}
         </p>
+      )}
+      {notice && (
+        <p role="status" className="mt-4 text-sm text-done">
+          {notice}
+        </p>
+      )}
 
-        {unsupported && (
-          <p role="alert" className="mt-4 text-sm text-destructive">
-            This browser does not support passkeys. Try a current version of Chrome,
-            Safari, Firefox, or Edge.
+      <div className="mt-5 space-y-2 text-center text-sm text-muted-foreground">
+        <button
+          type="button"
+          data-foley-click="swoosh"
+          className="font-medium text-foreground underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground"
+          onClick={() => {
+            setMode(mode === 'sign-in' ? 'forgot' : 'sign-in')
+            setError('')
+            setNotice('')
+          }}
+        >
+          {mode === 'sign-in' ? 'Forgot your password?' : 'Back to sign in'}
+        </button>
+
+        {mode === 'sign-in' && (
+          <p>
+            First time here?{' '}
+            <a
+              href={withOAuthAuthorization('/signup', oauthAuthorization)}
+              data-foley-click="swoosh"
+              className="font-medium text-foreground underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground"
+            >
+              Create an account
+            </a>
           </p>
         )}
-        {error && !unsupported && (
-          <p role="alert" className="mt-4 text-sm text-destructive">
-            {error}
-          </p>
-        )}
-      </Card>
-    </main>
+      </div>
+    </AuthShell>
   )
 }
