@@ -1,3 +1,5 @@
+import { execFileSync } from 'node:child_process'
+
 import tailwindcss from '@tailwindcss/vite'
 import { cloudflare } from '@cloudflare/vite-plugin'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
@@ -5,6 +7,10 @@ import viteReact from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import type { Plugin } from 'vite'
 import { generateSW, getManifest } from 'workbox-build'
+
+const gitSha =
+  process.env.WORKERS_CI_COMMIT_SHA ??
+  execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()
 
 function pwaServiceWorker(): Plugin {
   return {
@@ -56,6 +62,9 @@ export default defineConfig({
       '@tanstack/react-router > @tanstack/router-core',
       'better-auth > nanostores',
     ],
+  },
+  define: {
+    'import.meta.env.GIT_SHA': JSON.stringify(gitSha),
   },
   server: {
     allowedHosts: process.env.AMP_ORB ? true : undefined,
