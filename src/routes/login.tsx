@@ -1,7 +1,8 @@
 import { KeyRound } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 
+import { PasskeyPromptStatus } from '@/components/passkey-prompt-status'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { getSession } from '@/lib/auth-functions'
@@ -21,8 +22,16 @@ function errorMessage(error: { message?: string } | null) {
 function Login() {
   const [error, setError] = useState('')
   const [pending, setPending] = useState(false)
+  const [embedded, setEmbedded] = useState(false)
+
+  useEffect(() => setEmbedded(window.self !== window.top), [])
 
   const signIn = async () => {
+    if (window.self !== window.top) {
+      window.open(window.location.href, '_blank', 'noopener,noreferrer')
+      return
+    }
+
     setError('')
     setPending(true)
 
@@ -69,8 +78,17 @@ function Login() {
           disabled={pending || unsupported}
         >
           <KeyRound data-icon="inline-start" />
-          {pending ? 'Waiting for your passkey…' : 'Sign in with a passkey'}
+          {embedded
+            ? 'Open a new tab to sign in'
+            : pending
+              ? 'Waiting for your passkey…'
+              : 'Sign in with a passkey'}
         </Button>
+        <PasskeyPromptStatus
+          action="sign in"
+          embedded={embedded}
+          pending={pending}
+        />
 
         <p className="mt-5 text-center text-sm text-muted-foreground">
           First time here?{' '}

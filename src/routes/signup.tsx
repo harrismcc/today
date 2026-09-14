@@ -1,8 +1,9 @@
 import { Fingerprint } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 
+import { PasskeyPromptStatus } from '@/components/passkey-prompt-status'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { authClient } from '@/lib/auth-client'
@@ -23,8 +24,16 @@ function Signup() {
   const createRegistration = useServerFn(startPasskeyRegistration)
   const [error, setError] = useState('')
   const [pending, setPending] = useState(false)
+  const [embedded, setEmbedded] = useState(false)
+
+  useEffect(() => setEmbedded(window.self !== window.top), [])
 
   const register = async () => {
+    if (window.self !== window.top) {
+      window.open(window.location.href, '_blank', 'noopener,noreferrer')
+      return
+    }
+
     setError('')
     setPending(true)
 
@@ -77,8 +86,17 @@ function Signup() {
           disabled={pending || unsupported}
         >
           <Fingerprint data-icon="inline-start" />
-          {pending ? 'Creating your passkey…' : 'Create a passkey'}
+          {embedded
+            ? 'Open a new tab to create a passkey'
+            : pending
+              ? 'Creating your passkey…'
+              : 'Create a passkey'}
         </Button>
+        <PasskeyPromptStatus
+          action="create a passkey"
+          embedded={embedded}
+          pending={pending}
+        />
 
         <p className="mt-5 text-center text-sm text-muted-foreground">
           Already have an account?{' '}
