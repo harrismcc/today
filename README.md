@@ -23,15 +23,21 @@ pnpm wrangler login
 pnpm wrangler secret put BETTER_AUTH_SECRET
 ```
 
-Then deploy the Worker and apply the database migrations:
+Then build, apply the database migrations, and deploy the Worker:
 
 ```sh
 pnpm run deploy
-pnpm db:migrate:remote
 ```
+
+For Cloudflare Workers Builds, configure the production branch with:
+
+- Build command: `pnpm run build`
+- Deploy command: `pnpm run deploy:production`
+
+Leave the non-production deploy command as `npx wrangler versions upload`. This keeps preview builds from applying migrations to the production database. The production deploy command applies migrations before publishing the Worker, and stops the deployment if a migration fails.
 
 The Worker uses the `task-tracker` D1 database configured in `wrangler.jsonc`.
 
 The default auth host allowlist accepts the generated `*.workers.dev` address. Before attaching a custom domain, add its hostname to the comma-separated `BETTER_AUTH_ALLOWED_HOSTS` value in `wrangler.jsonc`.
 
-For later schema changes, update `src/db/schema.ts`, run `pnpm db:generate`, review the generated SQL, and apply it locally before applying it remotely.
+For later schema changes, update `src/db/schema.ts`, run `pnpm db:generate`, review the generated SQL, and apply it locally. Production migrations are applied automatically when the production branch deploys. Keep migrations compatible with the currently deployed Worker because they run immediately before the new Worker is published.
