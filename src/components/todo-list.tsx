@@ -195,7 +195,7 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
           variant="plain"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          placeholder="Add something for today…"
+          placeholder={offset === 0 ? "Add something for today…" : "Add something…"}
           aria-label="Add a new todo"
           className="min-w-0 flex-1 bg-transparent font-hand text-lg leading-relaxed text-foreground placeholder:text-muted-foreground/70 focus:outline-none sm:text-xl"
         />
