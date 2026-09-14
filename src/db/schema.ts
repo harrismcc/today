@@ -1,5 +1,5 @@
 import { relations, sql } from 'drizzle-orm'
-import { check, index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+import { check, index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
 
 export const user = sqliteTable('user', {
   id: text('id').primaryKey(),
@@ -100,7 +100,7 @@ export const passkey = sqliteTable(
   },
   (table) => [
     index('passkey_userId_idx').on(table.userId),
-    index('passkey_credentialID_idx').on(table.credentialID),
+    uniqueIndex('passkey_credentialID_unique').on(table.credentialID),
   ],
 )
 

@@ -22,6 +22,13 @@
       "when": 1789397718135,
       "tag": "0002_plain_hammerhead",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1789401499405,
+      "tag": "0003_amazing_genesis",
+      "breakpoints": true
     }
   ]
 }

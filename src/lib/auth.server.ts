@@ -2,6 +2,7 @@ import { passkey } from '@better-auth/passkey'
 import { drizzleAdapter } from '@better-auth/drizzle-adapter'
 import { betterAuth } from 'better-auth'
 import { tanstackStartCookies } from 'better-auth/tanstack-start'
+import { eq } from 'drizzle-orm'
 
 import { db } from '@/db/index.server'
 import * as schema from '@/db/schema'
@@ -36,8 +37,19 @@ export const auth = betterAuth({
             displayName: registration.name,
           }
         },
-        afterVerification: async ({ context, ctx }) => {
+        afterVerification: async ({ context, ctx, verification }) => {
           const registration = parseRegistrationContext(context)
+          const credentialId = verification.registrationInfo?.credential.id
+          if (!credentialId) throw new Error('Passkey credential is missing')
+
+          const existingPasskey = db
+            .select({ id: schema.passkey.id })
+            .from(schema.passkey)
+            .where(eq(schema.passkey.credentialID, credentialId))
+            .get()
+
+          if (existingPasskey) throw new Error('This passkey is already registered')
+
           const existingUser = await ctx.context.internalAdapter.findUserById(
             registration.id,
           )
