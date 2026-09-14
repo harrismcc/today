@@ -6,6 +6,7 @@ import {
 import { MotionConfig } from 'motion/react'
 import { useEffect, type ReactNode } from 'react'
 
+import { SoundEffects } from '@/components/sound-effects'
 import appCss from '@/styles/app.css?url'
 
 export const Route = createRootRoute({
@@ -55,7 +56,9 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
         <HeadContent />
       </head>
       <body className="font-sans antialiased">
-        <MotionConfig reducedMotion="user">{children}</MotionConfig>
+        <SoundEffects>
+          <MotionConfig reducedMotion="user">{children}</MotionConfig>
+        </SoundEffects>
         <PwaRegistration />
         <Scripts />
       </body>

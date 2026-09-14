@@ -2,6 +2,7 @@ import { Fingerprint } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
+import { play } from '@foleyjs/react'
 
 import { PasskeyPromptStatus } from '@/components/passkey-prompt-status'
 import { Button } from '@/components/ui/button'
@@ -53,12 +54,14 @@ function Signup() {
       })
 
       if (result.error) {
+        play('error')
         setError(errorMessage(result.error))
         return
       }
 
       if (!isOAuthContinuation(window.location.search)) window.location.replace('/')
     } catch (cause) {
+      play('error')
       setError(cause instanceof Error ? cause.message : 'Passkey creation failed')
     } finally {
       setPending(false)
@@ -109,6 +112,7 @@ function Signup() {
           Already have an account?{' '}
           <a
             href={`/login${oauthSearch}`}
+            data-foley-click="swoosh"
             onClick={(event) => {
               if (!isOAuthContinuation(window.location.search)) return
               event.preventDefault()

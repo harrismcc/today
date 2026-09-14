@@ -1,4 +1,5 @@
 import { Button as ButtonPrimitive } from "@base-ui/react/button"
+import type { CueName } from "@foleyjs/react"
 import { cva, type VariantProps } from 'class-variance-authority'
 
 import { cn } from '@/lib/utils'
@@ -55,11 +56,17 @@ function Button({
   className,
   variant = 'default',
   size = 'default',
+  sound = 'tap',
   ...props
-}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+}: ButtonPrimitive.Props &
+  VariantProps<typeof buttonVariants> & {
+    sound?: CueName | 'toggle' | false
+  }) {
   return (
     <ButtonPrimitive
       data-slot="button"
+      data-foley-click={sound && sound !== 'toggle' ? sound : undefined}
+      data-foley-toggle={sound === 'toggle' ? '' : undefined}
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
     />

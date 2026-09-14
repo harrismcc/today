@@ -50,6 +50,13 @@ function pwaServiceWorker(): Plugin {
 }
 
 export default defineConfig({
+  optimizeDeps: {
+    include: [
+      '@tanstack/react-router',
+      '@tanstack/react-router > @tanstack/router-core',
+      'better-auth > nanostores',
+    ],
+  },
   server: {
     allowedHosts: process.env.AMP_ORB ? true : undefined,
     port: 3000,

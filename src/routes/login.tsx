@@ -1,6 +1,7 @@
 import { KeyRound } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { createFileRoute, redirect } from '@tanstack/react-router'
+import { play } from '@foleyjs/react'
 
 import { PasskeyPromptStatus } from '@/components/passkey-prompt-status'
 import { Button } from '@/components/ui/button'
@@ -47,12 +48,14 @@ function Login() {
     try {
       const result = await authClient.signIn.passkey()
       if (result.error) {
+        play('error')
         setError(errorMessage(result.error))
         return
       }
 
       if (!isOAuthContinuation(window.location.search)) window.location.replace('/')
     } catch (cause) {
+      play('error')
       setError(cause instanceof Error ? cause.message : 'Passkey sign-in failed')
     } finally {
       setPending(false)
@@ -103,6 +106,7 @@ function Login() {
           First time here?{' '}
           <a
             href={`/signup${oauthSearch}`}
+            data-foley-click="swoosh"
             onClick={(event) => {
               if (!isOAuthContinuation(window.location.search)) return
               event.preventDefault()

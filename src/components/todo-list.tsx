@@ -6,7 +6,7 @@ import { TodoItem } from "./todo-item"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { useDoneSound } from "@/hooks/use-done-sound"
+import { play } from "@foleyjs/react"
 import { createTodo, deleteTodo, postponeTodo, updateTodoStatus } from "@/data/todos"
 import type { Todo, TodoStatus } from "@/db/schema"
 import { authClient } from "@/lib/auth-client"
@@ -29,7 +29,6 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
   const [byDay, setByDay] = useState(() => groupByDay(initialTodos))
   const [offset, setOffset] = useState(0)
   const [draft, setDraft] = useState("")
-  const playDone = useDoneSound()
   const createTodoMutation = useServerFn(createTodo)
   const deleteTodoMutation = useServerFn(deleteTodo)
   const postponeTodoMutation = useServerFn(postponeTodo)
@@ -47,47 +46,69 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
   const todos = byDay[key] ?? []
 
   const setStatus = async (id: string, status: TodoStatus) => {
-    const updated = await updateTodoStatusMutation({ data: { id, status } })
-    if (status === "done") playDone()
-    setByDay((prev) => ({
-      ...prev,
-      [key]: (prev[key] ?? []).map((todo) => (todo.id === id ? updated : todo)),
-    }))
+    try {
+      const updated = await updateTodoStatusMutation({ data: { id, status } })
+      setByDay((prev) => ({
+        ...prev,
+        [key]: (prev[key] ?? []).map((todo) => (todo.id === id ? updated : todo)),
+      }))
+      play(status === "done" ? "success" : "off")
+    } catch (error) {
+      play("error")
+      throw error
+    }
   }
 
   const removeTodo = async (id: string) => {
-    await deleteTodoMutation({ data: { id } })
-    setByDay((prev) =>
-      Object.fromEntries(
-        Object.entries(prev).map(([day, todos]) => [day, todos.filter((todo) => todo.id !== id)]),
-      ),
-    )
+    try {
+      await deleteTodoMutation({ data: { id } })
+      setByDay((prev) =>
+        Object.fromEntries(
+          Object.entries(prev).map(([day, todos]) => [day, todos.filter((todo) => todo.id !== id)]),
+        ),
+      )
+      play("drop")
+    } catch (error) {
+      play("error")
+      throw error
+    }
   }
 
   const postpone = async (id: string) => {
-    const updated = await postponeTodoMutation({ data: { id } })
-    setByDay((prev) => {
-      const withoutTodo = Object.fromEntries(
-        Object.entries(prev).map(([day, todos]) => [day, todos.filter((todo) => todo.id !== id)]),
-      )
+    try {
+      const updated = await postponeTodoMutation({ data: { id } })
+      setByDay((prev) => {
+        const withoutTodo = Object.fromEntries(
+          Object.entries(prev).map(([day, todos]) => [day, todos.filter((todo) => todo.id !== id)]),
+        )
 
-      return {
-        ...withoutTodo,
-        [updated.scheduledDate]: [...(withoutTodo[updated.scheduledDate] ?? []), updated],
-      }
-    })
+        return {
+          ...withoutTodo,
+          [updated.scheduledDate]: [...(withoutTodo[updated.scheduledDate] ?? []), updated],
+        }
+      })
+      play("swoosh")
+    } catch (error) {
+      play("error")
+      throw error
+    }
   }
 
   const addTodo = async (e: React.FormEvent) => {
     e.preventDefault()
     const text = draft.trim()
     if (!text) return
-    const todo = await createTodoMutation({ data: { text, scheduledDate: key } })
-    setByDay((prev) => ({
-      ...prev,
-      [key]: [...(prev[key] ?? []), todo],
-    }))
-    setDraft("")
+    try {
+      const todo = await createTodoMutation({ data: { text, scheduledDate: key } })
+      setByDay((prev) => ({
+        ...prev,
+        [key]: [...(prev[key] ?? []), todo],
+      }))
+      setDraft("")
+    } catch (error) {
+      play("error")
+      throw error
+    }
   }
 
   const relative =
@@ -113,6 +134,7 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
               type="button"
               variant="quiet"
               size="icon"
+              sound="swoosh"
               onClick={() => setOffset((current) => current - 1)}
               aria-label="Previous day"
               className="rounded-md"
@@ -123,6 +145,7 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
               type="button"
               variant="quiet"
               size="icon"
+              sound="swoosh"
               onClick={() => setOffset((current) => current + 1)}
               aria-label="Next day"
               className="rounded-md"
@@ -138,6 +161,7 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
               type="button"
               variant="quiet"
               size="icon"
+              sound="whoosh"
               onClick={signOut}
               aria-label="Sign out"
               className="rounded-md"

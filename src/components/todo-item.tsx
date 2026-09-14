@@ -34,6 +34,7 @@ export function TodoItem({ todo, onSetStatus, onPostpone, onDelete }: TodoItemPr
         type="button"
         variant="status"
         size="icon-xs"
+        sound={false}
         onClick={() => toggle("done")}
         aria-label={status === "done" ? "Mark as not done" : "Mark as done"}
         aria-pressed={status === "done"}
@@ -75,6 +76,7 @@ export function TodoItem({ todo, onSetStatus, onPostpone, onDelete }: TodoItemPr
             type="button"
             variant="quiet"
             size="icon-xs"
+            sound={false}
             onClick={() => onPostpone(id)}
             aria-label="Move to next day"
             className="rounded-md hover:text-postponed"
@@ -85,6 +87,7 @@ export function TodoItem({ todo, onSetStatus, onPostpone, onDelete }: TodoItemPr
             type="button"
             variant="quiet"
             size="icon-xs"
+            sound={false}
             onClick={() => onDelete(id)}
             aria-label="Delete this item"
             className="rounded-md hover:text-destructive"
