@@ -12,7 +12,10 @@ export function listTodos(userId: string) {
     .all()
 }
 
-export function insertTodo(userId: string, input: { text: string; scheduledDate: string }) {
+export async function insertTodo(
+  userId: string,
+  input: { text: string; scheduledDate: string },
+) {
   const now = new Date()
   const todo = {
     id: crypto.randomUUID(),
@@ -24,13 +27,16 @@ export function insertTodo(userId: string, input: { text: string; scheduledDate:
     updatedAt: now,
   }
 
-  db.insert(todos).values(todo).run()
+  await db.insert(todos).values(todo).run()
 
   return todo
 }
 
-export function setTodoStatus(userId: string, input: { id: string; status: TodoStatus }) {
-  const todo = db
+export async function setTodoStatus(
+  userId: string,
+  input: { id: string; status: TodoStatus },
+) {
+  const todo = await db
     .update(todos)
     .set({ status: input.status, updatedAt: new Date() })
     .where(and(eq(todos.id, input.id), eq(todos.userId, userId)))

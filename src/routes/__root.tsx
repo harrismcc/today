@@ -1,4 +1,3 @@
-import { Analytics } from '@vercel/analytics/react'
 import {
   HeadContent,
   Scripts,
@@ -57,7 +56,6 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
       </head>
       <body className="font-sans antialiased">
         {children}
-        {import.meta.env.PROD && <Analytics />}
         <PwaRegistration />
         <Scripts />
       </body>

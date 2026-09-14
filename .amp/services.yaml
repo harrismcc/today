@@ -2,7 +2,7 @@ services:
   web:
     command: >-
       pnpm db:migrate &&
-      BETTER_AUTH_URL="${PUBLIC_URL%/}" pnpm dev --host 0.0.0.0 --port "$PORT"
+      pnpm dev --host 0.0.0.0 --port "$PORT"
     health: /login
     portal:
       title: Today

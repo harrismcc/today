@@ -1,4 +1,5 @@
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto'
+import { env } from 'cloudflare:workers'
 
 const registrationLifetimeMs = 5 * 60 * 1000
 const developmentSecret = 'task-tracker-development-secret-change-me'
@@ -9,11 +10,11 @@ type RegistrationContext = {
   name: string
 }
 
-function authSecret() {
-  const secret = process.env.BETTER_AUTH_SECRET
+export function authSecret() {
+  const secret = env.BETTER_AUTH_SECRET
 
   if (secret) return secret
-  if (process.env.NODE_ENV === 'production') {
+  if (import.meta.env.PROD) {
     throw new Error('BETTER_AUTH_SECRET must be set in production')
   }
 

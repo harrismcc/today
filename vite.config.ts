@@ -1,7 +1,7 @@
 import tailwindcss from '@tailwindcss/vite'
+import { cloudflare } from '@cloudflare/vite-plugin'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
-import { nitro } from 'nitro/vite'
 import { defineConfig } from 'vite'
 import type { Plugin } from 'vite'
 import { generateSW, getManifest } from 'workbox-build'
@@ -23,8 +23,8 @@ function pwaServiceWorker(): Plugin {
       })
 
       const { count, size, warnings } = await generateSW({
-        swDest: '.output/public/sw.js',
-        globDirectory: '.output/public',
+        swDest: 'dist/client/sw.js',
+        globDirectory: 'dist/client',
         globPatterns: ['assets/**/*.{js,css,woff2}'],
         additionalManifestEntries: staticAssets.manifestEntries,
         navigateFallback: null,
@@ -56,5 +56,11 @@ export default defineConfig({
   resolve: {
     tsconfigPaths: true,
   },
-  plugins: [tailwindcss(), tanstackStart(), viteReact(), pwaServiceWorker(), nitro()],
+  plugins: [
+    tailwindcss(),
+    cloudflare({ viteEnvironment: { name: 'ssr' } }),
+    tanstackStart(),
+    viteReact(),
+    pwaServiceWorker(),
+  ],
 })

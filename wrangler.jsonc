@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "task-tracker",
+  "compatibility_date": "2026-09-14",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "@tanstack/react-start/server-entry",
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "BETTER_AUTH_ALLOWED_HOSTS": "*.workers.dev"
+  },
+  "secrets": {
+    "required": ["BETTER_AUTH_SECRET"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "task-tracker",
+      "migrations_dir": "drizzle"
+    }
+  ]
+}

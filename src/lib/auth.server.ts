@@ -2,22 +2,28 @@ import { passkey } from '@better-auth/passkey'
 import { drizzleAdapter } from '@better-auth/drizzle-adapter'
 import { betterAuth } from 'better-auth'
 import { tanstackStartCookies } from 'better-auth/tanstack-start'
+import { env } from 'cloudflare:workers'
 import { eq } from 'drizzle-orm'
 
 import { db } from '@/db/index.server'
 import * as schema from '@/db/schema'
-import { parseRegistrationContext } from '@/lib/auth-registration.server'
-
-const baseURL = (process.env.BETTER_AUTH_URL || process.env.PUBLIC_URL)?.replace(/\/$/, '')
+import { authSecret, parseRegistrationContext } from '@/lib/auth-registration.server'
 
 export const auth = betterAuth({
   appName: 'Today',
-  baseURL,
+  baseURL: {
+    allowedHosts: [
+      'localhost:*',
+      '127.0.0.1:*',
+      '*.onamp.dev',
+      ...env.BETTER_AUTH_ALLOWED_HOSTS.split(',').map((host) => host.trim()),
+    ],
+  },
+  secret: authSecret(),
   database: drizzleAdapter(db, {
     provider: 'sqlite',
     schema,
   }),
-  trustedOrigins: baseURL ? [baseURL] : [],
   plugins: [
     passkey({
       rpName: 'Today',
@@ -42,7 +48,7 @@ export const auth = betterAuth({
           const credentialId = verification.registrationInfo?.credential.id
           if (!credentialId) throw new Error('Passkey credential is missing')
 
-          const existingPasskey = db
+          const existingPasskey = await db
             .select({ id: schema.passkey.id })
             .from(schema.passkey)
             .where(eq(schema.passkey.credentialID, credentialId))
