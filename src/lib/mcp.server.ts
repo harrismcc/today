@@ -16,7 +16,7 @@ import {
   setTodoStatus,
   softDeleteTodo,
 } from '@/data/todos.server'
-import { auth } from '@/lib/auth.server'
+import { createAuth } from '@/lib/auth.server'
 import { mcpResource, mcpScope } from '@/lib/mcp-config.server'
 
 const dateKeyPattern = /^\d{4}-\d{2}-\d{2}$/
@@ -165,7 +165,7 @@ function accessToken(request: Request) {
 function authenticatedMcpHandler(request: Request) {
   const issuer = new URL('/api/auth', request.url).href
 
-  return auth.$context.then(({ internalAdapter }) =>
+  return createAuth().$context.then(({ internalAdapter }) =>
     createMcpProtectedRequestHandler(
       {
         issuer,

@@ -1,9 +1,9 @@
 import { getRequestHeaders } from '@tanstack/react-start/server'
 
-import { auth } from '@/lib/auth.server'
+import { createAuth } from '@/lib/auth.server'
 
 export async function readSession() {
-  return auth.api.getSession({ headers: getRequestHeaders() })
+  return createAuth().api.getSession({ headers: getRequestHeaders() })
 }
 
 export async function requireSession() {

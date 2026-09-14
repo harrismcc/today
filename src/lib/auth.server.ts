@@ -14,82 +14,84 @@ import { mcpResource, mcpScope } from '@/lib/mcp-config.server'
 
 const userDisplayName = 'Today user'
 
-export const auth = betterAuth({
-  appName: 'Today',
-  baseURL: {
-    allowedHosts: [
-      'localhost:*',
-      '127.0.0.1:*',
-      '*.onamp.dev',
-      ...env.BETTER_AUTH_ALLOWED_HOSTS.split(',').map((host) => host.trim()),
-    ],
-  },
-  secret: authSecret(),
-  database: drizzleAdapter(db, {
-    provider: 'sqlite',
-    schema,
-  }),
-  plugins: [
-    jwt(),
-    mcp({
-      loginPage: '/login',
-      consentPage: '/consent',
-      resource: mcpResource,
-      scopes: [mcpScope, 'offline_access'],
-      allowDynamicClientRegistration: true,
-      allowUnauthenticatedClientRegistration: true,
+export function createAuth() {
+  return betterAuth({
+    appName: 'Today',
+    baseURL: {
+      allowedHosts: [
+        'localhost:*',
+        '127.0.0.1:*',
+        '*.onamp.dev',
+        ...env.BETTER_AUTH_ALLOWED_HOSTS.split(',').map((host) => host.trim()),
+      ],
+    },
+    secret: authSecret(),
+    database: drizzleAdapter(db, {
+      provider: 'sqlite',
+      schema,
     }),
-    passkey({
-      rpName: 'Today',
-      authenticatorSelection: {
-        residentKey: 'required',
-        // Permit possession-only security keys that verify with a physical tap.
-        userVerification: 'preferred',
-      },
-      registration: {
-        requireSession: false,
-        resolveUser: ({ context }) => {
-          const registration = parseRegistrationContext(context)
-
-          return {
-            id: registration.id,
-            name: `${registration.id.replaceAll('-', '')}@passkey.invalid`,
-            displayName: userDisplayName,
-          }
+    plugins: [
+      jwt(),
+      mcp({
+        loginPage: '/login',
+        consentPage: '/consent',
+        resource: mcpResource,
+        scopes: [mcpScope, 'offline_access'],
+        allowDynamicClientRegistration: true,
+        allowUnauthenticatedClientRegistration: true,
+      }),
+      passkey({
+        rpName: 'Today',
+        authenticatorSelection: {
+          residentKey: 'required',
+          // Permit possession-only security keys that verify with a physical tap.
+          userVerification: 'preferred',
         },
-        afterVerification: async ({ context, ctx, verification }) => {
-          const registration = parseRegistrationContext(context)
-          const credentialId = verification.registrationInfo?.credential.id
-          if (!credentialId) throw new Error('Passkey credential is missing')
+        registration: {
+          requireSession: false,
+          resolveUser: ({ context }) => {
+            const registration = parseRegistrationContext(context)
 
-          const existingPasskey = await db
-            .select({ id: schema.passkey.id })
-            .from(schema.passkey)
-            .where(eq(schema.passkey.credentialID, credentialId))
-            .get()
-
-          if (existingPasskey) throw new Error('This passkey is already registered')
-
-          const existingUser = await ctx.context.internalAdapter.findUserById(
-            registration.id,
-          )
-
-          if (existingUser) throw new Error('Registration has already been used')
-
-          await ctx.context.internalAdapter.createUser(
-            {
+            return {
               id: registration.id,
-              name: userDisplayName,
-              email: `${registration.id.replaceAll('-', '')}@passkey.invalid`,
-              emailVerified: false,
-            },
-            { method: 'passkey' },
-          )
+              name: `${registration.id.replaceAll('-', '')}@passkey.invalid`,
+              displayName: userDisplayName,
+            }
+          },
+          afterVerification: async ({ context, ctx, verification }) => {
+            const registration = parseRegistrationContext(context)
+            const credentialId = verification.registrationInfo?.credential.id
+            if (!credentialId) throw new Error('Passkey credential is missing')
 
-          return { userId: registration.id }
+            const existingPasskey = await db
+              .select({ id: schema.passkey.id })
+              .from(schema.passkey)
+              .where(eq(schema.passkey.credentialID, credentialId))
+              .get()
+
+            if (existingPasskey) throw new Error('This passkey is already registered')
+
+            const existingUser = await ctx.context.internalAdapter.findUserById(
+              registration.id,
+            )
+
+            if (existingUser) throw new Error('Registration has already been used')
+
+            await ctx.context.internalAdapter.createUser(
+              {
+                id: registration.id,
+                name: userDisplayName,
+                email: `${registration.id.replaceAll('-', '')}@passkey.invalid`,
+                emailVerified: false,
+              },
+              { method: 'passkey' },
+            )
+
+            return { userId: registration.id }
+          },
         },
-      },
-    }),
-    tanstackStartCookies(),
-  ],
-})
+      }),
+      tanstackStartCookies(),
+    ],
+  })
+}
