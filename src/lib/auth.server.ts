@@ -1,6 +1,8 @@
 import { passkey } from '@better-auth/passkey'
 import { drizzleAdapter } from '@better-auth/drizzle-adapter'
+import { mcp } from '@better-auth/mcp'
 import { betterAuth } from 'better-auth'
+import { jwt } from 'better-auth/plugins'
 import { tanstackStartCookies } from 'better-auth/tanstack-start'
 import { env } from 'cloudflare:workers'
 import { eq } from 'drizzle-orm'
@@ -8,6 +10,7 @@ import { eq } from 'drizzle-orm'
 import { db } from '@/db/index.server'
 import * as schema from '@/db/schema'
 import { authSecret, parseRegistrationContext } from '@/lib/auth-registration.server'
+import { mcpResource, mcpScope } from '@/lib/mcp-config.server'
 
 const userDisplayName = 'Today user'
 
@@ -27,6 +30,15 @@ export const auth = betterAuth({
     schema,
   }),
   plugins: [
+    jwt(),
+    mcp({
+      loginPage: '/login',
+      consentPage: '/consent',
+      resource: mcpResource,
+      scopes: [mcpScope, 'offline_access'],
+      allowDynamicClientRegistration: true,
+      allowUnauthenticatedClientRegistration: true,
+    }),
     passkey({
       rpName: 'Today',
       authenticatorSelection: {

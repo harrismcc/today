@@ -36,6 +36,13 @@
       "when": 1789412202465,
       "tag": "0004_clean_whirlwind",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1789421420813,
+      "tag": "0005_even_maverick",
+      "breakpoints": true
     }
   ]
 }

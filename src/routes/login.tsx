@@ -1,16 +1,19 @@
 import { KeyRound } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { createFileRoute, Link, redirect } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
 import { PasskeyPromptStatus } from '@/components/passkey-prompt-status'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { getSession } from '@/lib/auth-functions'
 import { authClient } from '@/lib/auth-client'
+import { isOAuthContinuation } from '@/lib/oauth-continuation'
 
 export const Route = createFileRoute('/login')({
-  beforeLoad: async () => {
-    if (await getSession()) throw redirect({ to: '/' })
+  beforeLoad: async ({ location }) => {
+    if (!isOAuthContinuation(location.search) && (await getSession())) {
+      throw redirect({ to: '/' })
+    }
   },
   component: Login,
 })
@@ -20,11 +23,17 @@ function errorMessage(error: { message?: string } | null) {
 }
 
 function Login() {
+  const [oauthSearch, setOAuthSearch] = useState('')
   const [error, setError] = useState('')
   const [pending, setPending] = useState(false)
   const [embedded, setEmbedded] = useState(false)
 
-  useEffect(() => setEmbedded(window.self !== window.top), [])
+  useEffect(() => {
+    setEmbedded(window.self !== window.top)
+    if (isOAuthContinuation(window.location.search)) {
+      setOAuthSearch(window.location.search)
+    }
+  }, [])
 
   const signIn = async () => {
     if (window.self !== window.top) {
@@ -42,7 +51,7 @@ function Login() {
         return
       }
 
-      window.location.replace('/')
+      if (!isOAuthContinuation(window.location.search)) window.location.replace('/')
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Passkey sign-in failed')
     } finally {
@@ -92,12 +101,17 @@ function Login() {
 
         <p className="mt-5 text-center text-sm text-muted-foreground">
           First time here?{' '}
-          <Link
-            to="/signup"
+          <a
+            href={`/signup${oauthSearch}`}
+            onClick={(event) => {
+              if (!isOAuthContinuation(window.location.search)) return
+              event.preventDefault()
+              window.location.assign(`/signup${window.location.search}`)
+            }}
             className="font-medium text-foreground underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground"
           >
             Create an account
-          </Link>
+          </a>
         </p>
 
         {unsupported && (
