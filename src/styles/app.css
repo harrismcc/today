@@ -47,7 +47,6 @@
   --font-hand: var(--font-hand);
   --color-todo: var(--todo);
   --color-postponed: var(--postponed);
-  --color-canceled: var(--canceled);
   --color-done: var(--done);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -82,7 +81,6 @@
   --ring: oklch(0.7 0.03 70);
   --todo: oklch(0.53 0.02 62);
   --postponed: oklch(0.58 0.11 55);
-  --canceled: oklch(0.55 0.16 28);
   --done: oklch(0.52 0.1 145);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);

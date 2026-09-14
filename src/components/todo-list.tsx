@@ -3,7 +3,7 @@ import { Plus, ChevronLeft, ChevronRight, LogOut } from "lucide-react"
 import { useServerFn } from "@tanstack/react-start"
 import { TodoItem } from "./todo-item"
 import { useDoneSound } from "@/hooks/use-done-sound"
-import { createTodo, updateTodoStatus } from "@/data/todos"
+import { createTodo, deleteTodo, updateTodoStatus } from "@/data/todos"
 import type { Todo, TodoStatus } from "@/db/schema"
 import { authClient } from "@/lib/auth-client"
 
@@ -27,6 +27,7 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
   const [draft, setDraft] = useState("")
   const playDone = useDoneSound()
   const createTodoMutation = useServerFn(createTodo)
+  const deleteTodoMutation = useServerFn(deleteTodo)
   const updateTodoStatusMutation = useServerFn(updateTodoStatus)
 
   // The date currently in view, derived from a day offset relative to today.
@@ -47,6 +48,15 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
       ...prev,
       [key]: (prev[key] ?? []).map((todo) => (todo.id === id ? updated : todo)),
     }))
+  }
+
+  const removeTodo = async (id: string) => {
+    await deleteTodoMutation({ data: { id } })
+    setByDay((prev) =>
+      Object.fromEntries(
+        Object.entries(prev).map(([day, todos]) => [day, todos.filter((todo) => todo.id !== id)]),
+      ),
+    )
   }
 
   const addTodo = async (e: React.FormEvent) => {
@@ -112,7 +122,7 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
 
       <ul className="divide-y divide-border/60">
         {todos.map((todo) => (
-          <TodoItem key={todo.id} todo={todo} onSetStatus={setStatus} />
+          <TodoItem key={todo.id} todo={todo} onSetStatus={setStatus} onDelete={removeTodo} />
         ))}
       </ul>
 

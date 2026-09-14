@@ -5,9 +5,10 @@ import type { Todo, TodoStatus } from "@/db/schema"
 interface TodoItemProps {
   todo: Todo
   onSetStatus: (id: string, status: TodoStatus) => void
+  onDelete: (id: string) => void
 }
 
-export function TodoItem({ todo, onSetStatus }: TodoItemProps) {
+export function TodoItem({ todo, onSetStatus, onDelete }: TodoItemProps) {
   const { id, text, status } = todo
 
   // Clicking an active status again returns the item to plain "todo".
@@ -36,7 +37,6 @@ export function TodoItem({ todo, onSetStatus }: TodoItemProps) {
           className={cn(
             "transition-colors",
             status === "done" && "text-muted-foreground line-through",
-            status === "canceled" && "text-canceled/70 line-through",
             status === "postponed" && "italic text-postponed",
           )}
         >
@@ -58,13 +58,9 @@ export function TodoItem({ todo, onSetStatus }: TodoItemProps) {
           </button>
           <button
             type="button"
-            onClick={() => toggle("canceled")}
-            aria-label="Cancel this item"
-            aria-pressed={status === "canceled"}
-            className={cn(
-              "inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-canceled",
-              status === "canceled" && "text-canceled",
-            )}
+            onClick={() => onDelete(id)}
+            aria-label="Delete this item"
+            className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-destructive"
           >
             <X className="size-4 sm:size-[1.125rem]" strokeWidth={2.5} />
           </button>

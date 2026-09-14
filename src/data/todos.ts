@@ -37,6 +37,15 @@ function validateStatusInput(input: unknown) {
   return { id, status: status as TodoStatus }
 }
 
+function validateDeleteInput(input: unknown) {
+  if (!input || typeof input !== 'object') throw new Error('Invalid todo deletion')
+
+  const { id } = input as Record<string, unknown>
+  if (typeof id !== 'string' || !id) throw new Error('Todo id is required')
+
+  return { id }
+}
+
 export const getTodos = createServerFn({ method: 'GET' }).handler(async () => {
   const { requireSession } = await import('@/lib/auth-session.server')
   const session = await requireSession()
@@ -63,4 +72,14 @@ export const updateTodoStatus = createServerFn({ method: 'POST' })
 
     const { setTodoStatus } = await import('./todos.server')
     return setTodoStatus(session.user.id, data)
+  })
+
+export const deleteTodo = createServerFn({ method: 'POST' })
+  .validator(validateDeleteInput)
+  .handler(async ({ data }) => {
+    const { requireSession } = await import('@/lib/auth-session.server')
+    const session = await requireSession()
+
+    const { softDeleteTodo } = await import('./todos.server')
+    return softDeleteTodo(session.user.id, data.id)
   })

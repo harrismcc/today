@@ -131,7 +131,7 @@ export const passkeyRelations = relations(passkey, ({ one }) => ({
   }),
 }))
 
-export const todoStatuses = ['todo', 'postponed', 'canceled', 'done'] as const
+export const todoStatuses = ['todo', 'postponed', 'done'] as const
 
 export type TodoStatus = (typeof todoStatuses)[number]
 
@@ -147,9 +147,10 @@ export const todos = sqliteTable(
     scheduledDate: text('scheduled_date').notNull(),
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+    deletedAt: integer('deleted_at', { mode: 'timestamp_ms' }),
   },
   (table) => [
-    check('todos_status_check', sql`${table.status} in ('todo', 'postponed', 'canceled', 'done')`),
+    check('todos_status_check', sql`${table.status} in ('todo', 'postponed', 'done')`),
     index('todos_user_scheduled_date_idx').on(table.userId, table.scheduledDate),
   ],
 )

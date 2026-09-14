@@ -1,4 +1,4 @@
-import { and, asc, eq } from 'drizzle-orm'
+import { and, asc, eq, isNull } from 'drizzle-orm'
 
 import { db } from '@/db/index.server'
 import { todos, type TodoStatus } from '@/db/schema'
@@ -7,7 +7,7 @@ export function listTodos(userId: string) {
   return db
     .select()
     .from(todos)
-    .where(eq(todos.userId, userId))
+    .where(and(eq(todos.userId, userId), isNull(todos.deletedAt)))
     .orderBy(asc(todos.scheduledDate), asc(todos.createdAt))
     .all()
 }
@@ -25,6 +25,7 @@ export async function insertTodo(
     scheduledDate: input.scheduledDate,
     createdAt: now,
     updatedAt: now,
+    deletedAt: null,
   }
 
   await db.insert(todos).values(todo).run()
@@ -39,8 +40,24 @@ export async function setTodoStatus(
   const todo = await db
     .update(todos)
     .set({ status: input.status, updatedAt: new Date() })
-    .where(and(eq(todos.id, input.id), eq(todos.userId, userId)))
+    .where(and(eq(todos.id, input.id), eq(todos.userId, userId), isNull(todos.deletedAt)))
     .returning()
+    .get()
+
+  if (!todo) {
+    throw new Error('Todo not found')
+  }
+
+  return todo
+}
+
+export async function softDeleteTodo(userId: string, id: string) {
+  const now = new Date()
+  const todo = await db
+    .update(todos)
+    .set({ deletedAt: now, updatedAt: now })
+    .where(and(eq(todos.id, id), eq(todos.userId, userId), isNull(todos.deletedAt)))
+    .returning({ id: todos.id })
     .get()
 
   if (!todo) {
