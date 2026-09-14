@@ -38,20 +38,29 @@ function validateStatusInput(input: unknown) {
 }
 
 export const getTodos = createServerFn({ method: 'GET' }).handler(async () => {
+  const { requireSession } = await import('@/lib/auth-session.server')
+  const session = await requireSession()
+
   const { listTodos } = await import('./todos.server')
-  return listTodos()
+  return listTodos(session.user.id)
 })
 
 export const createTodo = createServerFn({ method: 'POST' })
   .validator(validateCreateInput)
   .handler(async ({ data }) => {
+    const { requireSession } = await import('@/lib/auth-session.server')
+    const session = await requireSession()
+
     const { insertTodo } = await import('./todos.server')
-    return insertTodo(data)
+    return insertTodo(session.user.id, data)
   })
 
 export const updateTodoStatus = createServerFn({ method: 'POST' })
   .validator(validateStatusInput)
   .handler(async ({ data }) => {
+    const { requireSession } = await import('@/lib/auth-session.server')
+    const session = await requireSession()
+
     const { setTodoStatus } = await import('./todos.server')
-    return setTodoStatus(data)
+    return setTodoStatus(session.user.id, data)
   })

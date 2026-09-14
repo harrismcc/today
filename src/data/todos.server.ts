@@ -1,16 +1,22 @@
-import { asc, eq } from 'drizzle-orm'
+import { and, asc, eq } from 'drizzle-orm'
 
 import { db } from '@/db/index.server'
 import { todos, type TodoStatus } from '@/db/schema'
 
-export function listTodos() {
-  return db.select().from(todos).orderBy(asc(todos.scheduledDate), asc(todos.createdAt)).all()
+export function listTodos(userId: string) {
+  return db
+    .select()
+    .from(todos)
+    .where(eq(todos.userId, userId))
+    .orderBy(asc(todos.scheduledDate), asc(todos.createdAt))
+    .all()
 }
 
-export function insertTodo(input: { text: string; scheduledDate: string }) {
+export function insertTodo(userId: string, input: { text: string; scheduledDate: string }) {
   const now = new Date()
   const todo = {
     id: crypto.randomUUID(),
+    userId,
     text: input.text,
     status: 'todo' as const,
     scheduledDate: input.scheduledDate,
@@ -23,11 +29,11 @@ export function insertTodo(input: { text: string; scheduledDate: string }) {
   return todo
 }
 
-export function setTodoStatus(input: { id: string; status: TodoStatus }) {
+export function setTodoStatus(userId: string, input: { id: string; status: TodoStatus }) {
   const todo = db
     .update(todos)
     .set({ status: input.status, updatedAt: new Date() })
-    .where(eq(todos.id, input.id))
+    .where(and(eq(todos.id, input.id), eq(todos.userId, userId)))
     .returning()
     .get()
 

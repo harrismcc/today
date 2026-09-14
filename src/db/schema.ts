@@ -139,6 +139,9 @@ export const todos = sqliteTable(
   'todos',
   {
     id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
     text: text('text').notNull(),
     status: text('status', { enum: todoStatuses }).notNull().default('todo'),
     scheduledDate: text('scheduled_date').notNull(),
@@ -147,7 +150,7 @@ export const todos = sqliteTable(
   },
   (table) => [
     check('todos_status_check', sql`${table.status} in ('todo', 'postponed', 'canceled', 'done')`),
-    index('todos_scheduled_date_idx').on(table.scheduledDate),
+    index('todos_user_scheduled_date_idx').on(table.userId, table.scheduledDate),
   ],
 )
 

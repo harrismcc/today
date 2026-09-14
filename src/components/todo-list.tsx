@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react"
-import { Plus, ChevronLeft, ChevronRight } from "lucide-react"
+import { Plus, ChevronLeft, ChevronRight, LogOut } from "lucide-react"
 import { useServerFn } from "@tanstack/react-start"
 import { TodoItem } from "./todo-item"
 import { useDoneSound } from "@/hooks/use-done-sound"
 import { createTodo, updateTodoStatus } from "@/data/todos"
 import type { Todo, TodoStatus } from "@/db/schema"
+import { authClient } from "@/lib/auth-client"
 
 // A stable local YYYY-MM-DD key for a given date.
 function dateKey(d: Date) {
@@ -68,6 +69,11 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
     day: "numeric",
   })
 
+  const signOut = async () => {
+    await authClient.signOut()
+    window.location.replace("/login")
+  }
+
   return (
     <section className="w-full max-w-xl">
       <header className="mb-4 sm:mb-5">
@@ -89,6 +95,15 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
               className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
               <ChevronRight className="size-5" />
+            </button>
+            <span className="mx-1 h-4 w-px bg-border" aria-hidden="true" />
+            <button
+              type="button"
+              onClick={signOut}
+              aria-label="Sign out"
+              className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <LogOut className="size-4" />
             </button>
           </div>
         </div>
