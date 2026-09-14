@@ -1,6 +1,13 @@
+@import '@fontsource-variable/geist';
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
+
+@font-face {
+  font-family: 'Excalifont';
+  src: url('/fonts/Excalifont-Regular.woff2') format('woff2');
+  font-display: swap;
+}
 
 @custom-variant dark (&:is(.dark *));
 
@@ -53,6 +60,8 @@
 
 :root {
   color-scheme: light;
+  --font-sans: 'Geist Variable', sans-serif;
+  --font-hand: 'Excalifont', cursive;
   --background: oklch(0.96 0.012 90);
   --foreground: oklch(0.29 0.018 60);
   --card: oklch(0.975 0.01 92);

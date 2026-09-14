@@ -1,5 +1,3 @@
-"use client"
-
 import { useCallback, useRef } from "react"
 
 // A short, satisfying two-note "ding" synthesized with the Web Audio API,

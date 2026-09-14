@@ -1,0 +1,60 @@
+import { Analytics } from '@vercel/analytics/react'
+import {
+  HeadContent,
+  Scripts,
+  createRootRoute,
+} from '@tanstack/react-router'
+import type { ReactNode } from 'react'
+
+import appCss from '@/styles/app.css?url'
+
+export const Route = createRootRoute({
+  head: () => ({
+    meta: [
+      { charSet: 'utf-8' },
+      {
+        name: 'viewport',
+        content: 'width=device-width, initial-scale=1',
+      },
+      { title: 'Today — a simple list' },
+      {
+        name: 'description',
+        content: 'A calm, paper-like list for the things you want to do today.',
+      },
+      { name: 'generator', content: 'v0.app' },
+      { name: 'color-scheme', content: 'light' },
+      { name: 'theme-color', content: '#f4f0e6' },
+    ],
+    links: [
+      { rel: 'stylesheet', href: appCss },
+      {
+        rel: 'icon',
+        href: '/icon-light-32x32.png',
+        media: '(prefers-color-scheme: light)',
+      },
+      {
+        rel: 'icon',
+        href: '/icon-dark-32x32.png',
+        media: '(prefers-color-scheme: dark)',
+      },
+      { rel: 'icon', href: '/icon.svg', type: 'image/svg+xml' },
+      { rel: 'apple-touch-icon', href: '/apple-icon.png' },
+    ],
+  }),
+  shellComponent: RootDocument,
+})
+
+function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
+  return (
+    <html lang="en" className="bg-background">
+      <head>
+        <HeadContent />
+      </head>
+      <body className="font-sans antialiased">
+        {children}
+        {import.meta.env.PROD && <Analytics />}
+        <Scripts />
+      </body>
+    </html>
+  )
+}

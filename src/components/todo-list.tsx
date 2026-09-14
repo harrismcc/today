@@ -1,5 +1,3 @@
-"use client"
-
 import { useMemo, useState } from "react"
 import { Plus, ChevronLeft, ChevronRight } from "lucide-react"
 import { TodoItem, type Todo, type Status } from "./todo-item"
