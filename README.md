@@ -29,15 +29,20 @@ Then build, apply the database migrations, and deploy the Worker:
 pnpm run deploy
 ```
 
-For Cloudflare Workers Builds, configure the production branch with:
+For Cloudflare Workers Builds, use `pnpm run build` as the build command. Its `prebuild`
+hook detects a production build from Cloudflare's `WORKERS_CI_BUILD_UUID` and
+`WORKERS_CI_BRANCH` variables, applies remote migrations, and stops the build if a
+migration fails. The deploy command can remain `npx wrangler deploy`.
 
-- Build command: `pnpm run build`
-- Deploy command: `pnpm run deploy:production`
+The API token selected in **Worker > Settings > Builds** must include **D1: Edit** in
+addition to the Worker deployment permissions. Cloudflare's default generated Builds
+token does not include D1 access.
 
-Leave the non-production deploy command as `npx wrangler versions upload`. This keeps preview builds from applying migrations to the production database. The production deploy command applies migrations before publishing the Worker, and stops the deployment if a migration fails.
+Leave the non-production deploy command as `npx wrangler versions upload`. Preview and
+local builds skip the production migration hook.
 
 The Worker uses the `task-tracker` D1 database configured in `wrangler.jsonc`.
 
 The auth host allowlist contains only the app's exact Workers address and custom domain. Add other app-controlled hostnames to the comma-separated `BETTER_AUTH_ALLOWED_HOSTS` value in `wrangler.jsonc`.
 
-For later schema changes, update `src/db/schema.ts`, run `pnpm db:generate`, review the generated SQL, and apply it locally. Production migrations are applied automatically when the production branch deploys. Keep migrations compatible with the currently deployed Worker because they run immediately before the new Worker is published.
+For later schema changes, update `src/db/schema.ts`, run `pnpm db:generate`, review the generated SQL, and apply it locally. Production migrations are applied automatically during the production branch's build, before the new Worker is published. Keep migrations compatible with the currently deployed Worker because the old Worker can serve traffic between the migration and deployment.

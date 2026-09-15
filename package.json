@@ -6,6 +6,7 @@
   "packageManager": "pnpm@12.3.4",
   "scripts": {
     "dev": "vite dev",
+    "prebuild": "node scripts/migrate-production-build.mjs",
     "build": "vite build && tsc --noEmit",
     "preview": "vite preview",
     "deploy": "pnpm run build && pnpm run deploy:production",
