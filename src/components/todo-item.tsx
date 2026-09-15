@@ -62,7 +62,7 @@ export function TodoItem({ todo, pending, onSetStatus, onPostpone, onDelete }: T
               exit={{ opacity: 0, scale: 0.94 }}
               transition={{ duration: 0.12, ease: "easeOut" }}
             >
-              <Check className="size-3.5 text-done sm:size-4" strokeWidth={3} />
+              <Check className="size-4 text-done sm:size-[1.125rem]" strokeWidth={4} />
             </motion.span>
           )}
         </AnimatePresence>
