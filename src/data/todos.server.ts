@@ -70,6 +70,28 @@ export async function postponeTodoToNextDay(userId: string, id: string) {
   return todo
 }
 
+export async function deferTodoToDate(
+  userId: string,
+  input: { id: string; scheduledDate: string },
+) {
+  const todo = await db
+    .update(todos)
+    .set({
+      status: 'postponed',
+      scheduledDate: input.scheduledDate,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(todos.id, input.id), eq(todos.userId, userId), isNull(todos.deletedAt)))
+    .returning()
+    .get()
+
+  if (!todo) {
+    throw new Error('Todo not found')
+  }
+
+  return todo
+}
+
 export async function softDeleteTodo(userId: string, id: string) {
   const now = new Date()
   const todo = await db

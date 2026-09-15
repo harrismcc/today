@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as _versionRouteImport } from './routes/[_]_version'
+import { Route as CleanupRouteImport } from './routes/cleanup'
 import { Route as ConsentRouteImport } from './routes/consent'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as McpRouteImport } from './routes/mcp'
@@ -31,6 +32,11 @@ const IndexRoute = IndexRouteImport.update({
 const _versionRoute = _versionRouteImport.update({
   id: '/__version',
   path: '/__version',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CleanupRoute = CleanupRouteImport.update({
+  id: '/cleanup',
+  path: '/cleanup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ConsentRoute = ConsentRouteImport.update({
@@ -92,6 +98,7 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/__version': typeof _versionRoute
+  '/cleanup': typeof CleanupRoute
   '/consent': typeof ConsentRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
@@ -107,6 +114,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/__version': typeof _versionRoute
+  '/cleanup': typeof CleanupRoute
   '/consent': typeof ConsentRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
@@ -122,6 +130,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/__version': typeof _versionRoute
+  '/cleanup': typeof CleanupRoute
   '/consent': typeof ConsentRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
@@ -139,6 +148,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/__version'
+    | '/cleanup'
     | '/consent'
     | '/login'
     | '/mcp'
@@ -154,6 +164,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/__version'
+    | '/cleanup'
     | '/consent'
     | '/login'
     | '/mcp'
@@ -168,6 +179,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/__version'
+    | '/cleanup'
     | '/consent'
     | '/login'
     | '/mcp'
@@ -184,6 +196,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   _versionRoute: typeof _versionRoute
+  CleanupRoute: typeof CleanupRoute
   ConsentRoute: typeof ConsentRoute
   LoginRoute: typeof LoginRoute
   McpRoute: typeof McpRoute
@@ -209,6 +222,13 @@ declare module '@tanstack/react-router' {
       path: '/__version'
       fullPath: '/__version'
       preLoaderRoute: typeof _versionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cleanup': {
+      id: '/cleanup'
+      path: '/cleanup'
+      fullPath: '/cleanup'
+      preLoaderRoute: typeof CleanupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/consent': {
@@ -308,6 +328,7 @@ const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   _versionRoute: _versionRoute,
+  CleanupRoute: CleanupRoute,
   ConsentRoute: ConsentRoute,
   LoginRoute: LoginRoute,
   McpRoute: McpRoute,

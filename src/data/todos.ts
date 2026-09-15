@@ -46,6 +46,18 @@ function validateIdInput(input: unknown) {
   return { id }
 }
 
+function validateDeferInput(input: unknown) {
+  if (!input || typeof input !== 'object') throw new Error('Invalid todo')
+
+  const { id, scheduledDate } = input as Record<string, unknown>
+  if (typeof id !== 'string' || !id) throw new Error('Todo id is required')
+  if (typeof scheduledDate !== 'string' || !isDateKey(scheduledDate)) {
+    throw new Error('A valid scheduled date is required')
+  }
+
+  return { id, scheduledDate }
+}
+
 export const getTodos = createServerFn({ method: 'GET' }).handler(async () => {
   const { requireSession } = await import('@/lib/auth-session.server')
   const session = await requireSession()
@@ -82,6 +94,16 @@ export const postponeTodo = createServerFn({ method: 'POST' })
 
     const { postponeTodoToNextDay } = await import('./todos.server')
     return postponeTodoToNextDay(session.user.id, data.id)
+  })
+
+export const deferTodo = createServerFn({ method: 'POST' })
+  .validator(validateDeferInput)
+  .handler(async ({ data }) => {
+    const { requireSession } = await import('@/lib/auth-session.server')
+    const session = await requireSession()
+
+    const { deferTodoToDate } = await import('./todos.server')
+    return deferTodoToDate(session.user.id, data)
   })
 
 export const deleteTodo = createServerFn({ method: 'POST' })

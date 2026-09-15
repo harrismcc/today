@@ -1,6 +1,6 @@
 import { Menu } from '@base-ui/react/menu'
 import { play } from '@foleyjs/react'
-import { LogOut, Menu as MenuIcon, Settings } from 'lucide-react'
+import { Eraser, LogOut, Menu as MenuIcon, Settings } from 'lucide-react'
 
 import { buttonVariants } from '@/components/ui/button'
 import { authClient } from '@/lib/auth-client'
@@ -31,6 +31,15 @@ export function AppMenu() {
       <Menu.Portal>
         <Menu.Positioner side="bottom" align="end" sideOffset={6} className="z-50">
           <Menu.Popup className="min-w-40 origin-top-right rounded-lg bg-popover p-1 text-popover-foreground shadow-lg ring-1 ring-foreground/10 outline-none data-ending-style:opacity-0 data-starting-style:opacity-0 motion-safe:transition-[opacity,transform] motion-safe:duration-150 motion-safe:ease-out motion-safe:data-ending-style:scale-[0.98] motion-safe:data-starting-style:scale-[0.98]">
+            <Menu.LinkItem
+              href="/cleanup"
+              closeOnClick
+              data-foley-click="swoosh"
+              className={itemClassName}
+            >
+              <Eraser className="size-4 text-muted-foreground" />
+              Clean up
+            </Menu.LinkItem>
             <Menu.LinkItem
               href="/settings"
               closeOnClick
