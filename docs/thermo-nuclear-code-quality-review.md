@@ -23,7 +23,7 @@
 | 9. OAuth continuation | Resolved | Typed route search is the sole source for guards, links, and submissions, including SSR. |
 | 10. MCP JWKS cast | Mitigated | The upstream 1.7.4 mismatch remains, but the cast is isolated behind a validated, tested adapter. |
 | 11. Partial PWA lifecycle | Resolved | Navigations are network-only with a static offline fallback; waiting workers activate through an explicit update prompt. |
-| 12. Duplicate auth machinery | Resolved | Better Auth is module-scoped and the canonical HIBP reset-password path replaces custom middleware. |
+| 12. Duplicate auth machinery | Resolved | One request-scoped factory owns the Better Auth configuration, preserving Cloudflare's I/O context; the canonical HIBP reset-password path replaces custom middleware. |
 | 13. Open registration | Mitigated | Standards-compatible registration remains enabled with a five-per-minute, trusted-IP limit; storage is per Worker isolate, not global. |
 
 Integrated verification passed: 11 domain/OAuth/MCP tests, 3 generated-service-worker tests, the production build and TypeScript check, local migration `0007`, OAuth discovery and registration probes, and browser checks for postponed-plus-done rendering and cleanup keyboard isolation.

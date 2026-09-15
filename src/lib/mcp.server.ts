@@ -25,7 +25,7 @@ import {
   todoStatusInputSchema,
   todoStatusSchema,
 } from '@/domain/todos'
-import { auth } from '@/lib/auth.server'
+import { createAuth } from '@/lib/auth.server'
 import { mcpResource, mcpScope } from '@/lib/mcp-config.server'
 import {
   createMcpProtectedHandlerWithJwksLoader,
@@ -184,6 +184,7 @@ function accessToken(request: Request) {
 
 function authenticatedMcpHandler(request: Request) {
   const issuer = new URL('/api/auth', request.url).href
+  const auth = createAuth()
 
   return auth.$context.then(({ internalAdapter }) =>
     createMcpProtectedHandlerWithJwksLoader(
