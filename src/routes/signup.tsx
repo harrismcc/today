@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { play } from '@foleyjs/react'
 
@@ -9,12 +9,21 @@ import { authClient } from '@/lib/auth-client'
 import { getSession } from '@/lib/auth-functions'
 import {
   oauthAuthorizationFromSearch,
+  validateOAuthContinuationSearch,
   withOAuthAuthorization,
 } from '@/lib/oauth-continuation'
 
 export const Route = createFileRoute('/signup')({
-  beforeLoad: async () => {
-    if (await getSession()) throw redirect({ to: '/' })
+  validateSearch: validateOAuthContinuationSearch,
+  beforeLoad: async ({ search }) => {
+    if (!(await getSession())) return
+
+    const oauth = oauthAuthorizationFromSearch(search)
+    if (oauth) {
+      throw redirect({ href: oauth })
+    }
+
+    throw redirect({ to: '/' })
   },
   component: Signup,
 })
@@ -24,17 +33,13 @@ function errorMessage(error: { message?: string } | null) {
 }
 
 function Signup() {
-  const [oauthAuthorization, setOAuthAuthorization] = useState('')
+  const oauth = oauthAuthorizationFromSearch(Route.useSearch())
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmation, setConfirmation] = useState('')
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [pending, setPending] = useState(false)
-
-  useEffect(() => {
-    setOAuthAuthorization(oauthAuthorizationFromSearch(window.location.search) ?? '')
-  }, [])
 
   const register = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -54,7 +59,7 @@ function Signup() {
         email,
         name: 'Today user',
         password,
-        callbackURL: oauthAuthorizationFromSearch(window.location.search) ?? '/',
+        callbackURL: oauth ?? '/',
       })
 
       if (result.error) {
@@ -159,7 +164,7 @@ function Signup() {
       <p className="mt-5 text-center text-sm text-muted-foreground">
         Already have an account?{' '}
         <a
-          href={withOAuthAuthorization('/login', oauthAuthorization)}
+          href={withOAuthAuthorization('/login', oauth)}
           data-foley-click="swoosh"
           className="font-medium text-foreground underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground"
         >

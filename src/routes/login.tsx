@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { play } from '@foleyjs/react'
 
@@ -8,24 +8,20 @@ import { Input } from '@/components/ui/input'
 import { getSession } from '@/lib/auth-functions'
 import { authClient } from '@/lib/auth-client'
 import {
-  getOAuthAuthorizationPath,
-  isOAuthContinuation,
   oauthAuthorizationFromSearch,
+  validateOAuthContinuationSearch,
   withOAuthAuthorization,
 } from '@/lib/oauth-continuation'
 
 export const Route = createFileRoute('/login')({
-  beforeLoad: async ({ location }) => {
-    if (isOAuthContinuation(location.search)) return
-
+  validateSearch: validateOAuthContinuationSearch,
+  beforeLoad: async ({ search }) => {
     const session = await getSession()
     if (!session) return
 
-    const continuation = getOAuthAuthorizationPath(
-      (location.search as Record<string, unknown>).oauth,
-    )
-    if (continuation) {
-      throw redirect({ href: continuation })
+    const oauth = oauthAuthorizationFromSearch(search)
+    if (oauth) {
+      throw redirect({ href: oauth })
     }
 
     throw redirect({ to: '/' })
@@ -38,19 +34,16 @@ function errorMessage(error: { message?: string } | null) {
 }
 
 function Login() {
-  const [oauthAuthorization, setOAuthAuthorization] = useState('')
-  const [mode, setMode] = useState<'sign-in' | 'forgot'>('sign-in')
+  const search = Route.useSearch()
+  const oauth = oauthAuthorizationFromSearch(search)
+  const [mode, setMode] = useState<'sign-in' | 'forgot'>(() =>
+    search.forgot ? 'forgot' : 'sign-in',
+  )
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [pending, setPending] = useState(false)
-
-  useEffect(() => {
-    const search = new URLSearchParams(window.location.search)
-    setOAuthAuthorization(oauthAuthorizationFromSearch(window.location.search) ?? '')
-    if (search.get('forgot') === 'true') setMode('forgot')
-  }, [])
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -59,12 +52,10 @@ function Login() {
     setPending(true)
 
     try {
-      const continuation = oauthAuthorizationFromSearch(window.location.search)
-
       if (mode === 'forgot') {
         const result = await authClient.requestPasswordReset({
           email,
-          redirectTo: withOAuthAuthorization('/reset-password', continuation),
+          redirectTo: withOAuthAuthorization('/reset-password', oauth),
         })
 
         if (result.error) {
@@ -81,8 +72,8 @@ function Login() {
       const result = await authClient.signIn.email({
         email,
         password,
-        ...(continuation && {
-          callbackURL: continuation,
+        ...(oauth && {
+          callbackURL: oauth,
         }),
       })
       if (result.error) {
@@ -98,7 +89,7 @@ function Login() {
       }
 
       play('success')
-      window.location.replace(continuation ?? '/')
+      window.location.replace(oauth ?? '/')
     } catch (cause) {
       play('error')
       setError(cause instanceof Error ? cause.message : 'Unable to continue')
@@ -190,7 +181,7 @@ function Login() {
           <p>
             First time here?{' '}
             <a
-              href={withOAuthAuthorization('/signup', oauthAuthorization)}
+              href={withOAuthAuthorization('/signup', oauth)}
               data-foley-click="swoosh"
               className="font-medium text-foreground underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground"
             >

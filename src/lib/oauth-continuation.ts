@@ -1,23 +1,26 @@
-export function isOAuthContinuation(search: string | Record<string, unknown>) {
-  if (typeof search === 'string') {
-    const params = new URLSearchParams(search)
-    return params.has('sig') && params.has('ba_param')
-  }
-
-  return typeof search.sig === 'string' && search.ba_param !== undefined
+export type OAuthContinuationSearch = Record<string, unknown> & {
+  forgot?: true
+  oauth?: string
 }
 
-export function oauthAuthorizationCallback(search: string) {
-  if (!isOAuthContinuation(search)) return undefined
+const signedParameterNames = new Set(['sig', 'exp', 'ba_iat', 'ba_param', 'ba_pl'])
 
-  const params = new URLSearchParams(search)
-  params.delete('sig')
-  params.delete('exp')
-  params.delete('ba_iat')
-  params.delete('ba_param')
-  params.delete('ba_pl')
+function signedOAuthAuthorization(search: Record<string, unknown>) {
+  if (typeof search.sig !== 'string' || search.ba_param === undefined) return undefined
 
-  return `/api/auth/oauth2/authorize?${params}`
+  const params = new URLSearchParams()
+  for (const [name, value] of Object.entries(search)) {
+    if (signedParameterNames.has(name)) continue
+
+    for (const item of Array.isArray(value) ? value : [value]) {
+      if (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean') {
+        params.append(name, String(item))
+      }
+    }
+  }
+
+  const query = params.toString()
+  return `/api/auth/oauth2/authorize${query ? `?${query}` : ''}`
 }
 
 export function getOAuthAuthorizationPath(value: unknown) {
@@ -40,11 +43,19 @@ export function getOAuthAuthorizationPath(value: unknown) {
   }
 }
 
-export function oauthAuthorizationFromSearch(search: string) {
-  return (
-    oauthAuthorizationCallback(search) ??
-    getOAuthAuthorizationPath(new URLSearchParams(search).get('oauth'))
-  )
+export function validateOAuthContinuationSearch(
+  search: Record<string, unknown>,
+): OAuthContinuationSearch {
+  return {
+    ...search,
+    forgot:
+      search.forgot === true || search.forgot === 'true' ? (true as const) : undefined,
+    oauth: getOAuthAuthorizationPath(search.oauth),
+  }
+}
+
+export function oauthAuthorizationFromSearch(search: OAuthContinuationSearch) {
+  return signedOAuthAuthorization(search) ?? getOAuthAuthorizationPath(search.oauth)
 }
 
 export function withOAuthAuthorization(path: string, authorization: unknown) {

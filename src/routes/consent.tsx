@@ -24,7 +24,6 @@ function errorMessage(error: { message?: string } | null) {
 
 function scopeDescription(scope: string) {
   if (scope === 'mcp:todos') return 'View, create, and update your todos'
-  if (scope === 'offline_access') return 'Stay connected until you revoke access'
   return scope
 }
 

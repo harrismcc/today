@@ -1,21 +1,33 @@
 import { and, asc, eq, isNull, sql } from 'drizzle-orm'
 
 import { db } from '@/db/index.server'
-import { todos, type TodoStatus } from '@/db/schema'
+import { todos } from '@/db/schema'
+import type {
+  CreateTodoInput,
+  RescheduleTodoInput,
+  TodoListFilters,
+  TodoStatusInput,
+} from '@/domain/todos'
 
-export function listTodos(userId: string) {
+export function listTodos(userId: string, filters: TodoListFilters = {}) {
   return db
     .select()
     .from(todos)
-    .where(and(eq(todos.userId, userId), isNull(todos.deletedAt)))
-    .orderBy(asc(todos.scheduledDate), asc(todos.createdAt))
+    .where(
+      and(
+        eq(todos.userId, userId),
+        isNull(todos.deletedAt),
+        filters.scheduledDate
+          ? eq(todos.scheduledDate, filters.scheduledDate)
+          : undefined,
+        filters.status ? eq(todos.status, filters.status) : undefined,
+      ),
+    )
+    .orderBy(asc(todos.scheduledDate), asc(todos.createdAt), asc(todos.id))
     .all()
 }
 
-export async function insertTodo(
-  userId: string,
-  input: { text: string; scheduledDate: string },
-) {
+export async function insertTodo(userId: string, input: CreateTodoInput) {
   const now = new Date()
   const todo = {
     id: crypto.randomUUID(),
@@ -23,6 +35,7 @@ export async function insertTodo(
     text: input.text,
     status: 'todo' as const,
     scheduledDate: input.scheduledDate,
+    postponedAt: null,
     createdAt: now,
     updatedAt: now,
     deletedAt: null,
@@ -35,7 +48,7 @@ export async function insertTodo(
 
 export async function setTodoStatus(
   userId: string,
-  input: { id: string; status: TodoStatus },
+  input: TodoStatusInput,
 ) {
   const todo = await db
     .update(todos)
@@ -51,35 +64,21 @@ export async function setTodoStatus(
   return todo
 }
 
-export async function postponeTodoToNextDay(userId: string, id: string) {
-  const todo = await db
-    .update(todos)
-    .set({
-      status: 'postponed',
-      scheduledDate: sql`date(${todos.scheduledDate}, '+1 day')`,
-      updatedAt: new Date(),
-    })
-    .where(and(eq(todos.id, id), eq(todos.userId, userId), isNull(todos.deletedAt)))
-    .returning()
-    .get()
-
-  if (!todo) {
-    throw new Error('Todo not found')
-  }
-
-  return todo
-}
-
-export async function deferTodoToDate(
+export async function rescheduleTodoToDate(
   userId: string,
-  input: { id: string; scheduledDate: string },
+  input: RescheduleTodoInput,
 ) {
+  const now = new Date()
   const todo = await db
     .update(todos)
     .set({
-      status: 'postponed',
       scheduledDate: input.scheduledDate,
-      updatedAt: new Date(),
+      postponedAt: sql`CASE
+        WHEN ${input.scheduledDate} > ${todos.scheduledDate}
+        THEN coalesce(${todos.postponedAt}, ${now.getTime()})
+        ELSE ${todos.postponedAt}
+      END`,
+      updatedAt: now,
     })
     .where(and(eq(todos.id, input.id), eq(todos.userId, userId), isNull(todos.deletedAt)))
     .returning()

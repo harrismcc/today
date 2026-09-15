@@ -1,18 +1,44 @@
 import { Menu } from '@base-ui/react/menu'
 import { play } from '@foleyjs/react'
 import { Eraser, LogOut, Menu as MenuIcon, Settings } from 'lucide-react'
+import { useRef, useState } from 'react'
 
 import { buttonVariants } from '@/components/ui/button'
 import { authClient } from '@/lib/auth-client'
 
 const itemClassName =
   'flex cursor-default items-center gap-2 rounded-md px-2.5 py-2 text-sm outline-none transition-colors duration-100 data-highlighted:bg-accent data-highlighted:text-foreground'
+const signOutErrorMessage = 'Unable to log out. Please try again.'
 
 export function AppMenu() {
+  const [signOutError, setSignOutError] = useState('')
+  const [signingOut, setSigningOut] = useState(false)
+  const signingOutRef = useRef(false)
+
   const signOut = async () => {
-    play('whoosh')
-    await authClient.signOut()
-    window.location.replace('/login')
+    if (signingOutRef.current) return
+
+    signingOutRef.current = true
+    setSignOutError('')
+    setSigningOut(true)
+
+    try {
+      const result = await authClient.signOut()
+      if (result.error) {
+        play('error')
+        setSignOutError(signOutErrorMessage)
+        return
+      }
+
+      play('whoosh')
+      window.location.replace('/login')
+    } catch {
+      play('error')
+      setSignOutError(signOutErrorMessage)
+    } finally {
+      signingOutRef.current = false
+      setSigningOut(false)
+    }
   }
 
   return (
@@ -51,12 +77,19 @@ export function AppMenu() {
             </Menu.LinkItem>
             <Menu.Separator className="my-1 h-px bg-border/70" />
             <Menu.Item
-              onClick={signOut}
+              closeOnClick={false}
+              disabled={signingOut}
+              onClick={() => void signOut()}
               className={itemClassName}
             >
               <LogOut className="size-4 text-muted-foreground" />
-              Log out
+              {signingOut ? 'Logging out…' : 'Log out'}
             </Menu.Item>
+            {signOutError && (
+              <p role="alert" className="max-w-56 px-2.5 py-2 text-sm text-destructive">
+                {signOutError}
+              </p>
+            )}
           </Menu.Popup>
         </Menu.Positioner>
       </Menu.Portal>

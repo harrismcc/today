@@ -11,7 +11,15 @@ import {
   useTransform,
   type PanInfo,
 } from 'motion/react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useReducer,
+  useRef,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from 'react'
+import { flushSync } from 'react-dom'
 
 import { AppMenu } from '@/components/app-menu'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -20,6 +28,28 @@ import type { Todo } from '@/db/schema'
 
 const SWIPE_DISTANCE = 140
 const SWIPE_VELOCITY = 900
+
+type Direction = -1 | 1
+type AnimatedPhase = 'entering' | 'recovering'
+type Interaction =
+  | { phase: 'entering' }
+  | { phase: 'ready' }
+  | { phase: 'committing'; direction: Direction }
+  | { phase: 'recovering' }
+  | { phase: 'complete' }
+
+type CleanupState = {
+  todos: Todo[]
+  interaction: Interaction
+  error: string | null
+}
+
+type CleanupAction =
+  | { type: 'reset'; todos: Todo[] }
+  | { type: 'animation-finished'; phase: AnimatedPhase }
+  | { type: 'commit'; direction: Direction }
+  | { type: 'commit-succeeded'; todoId: string }
+  | { type: 'commit-failed' }
 
 function dateKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
@@ -33,106 +63,141 @@ function tomorrowKey() {
   return dateKey(date)
 }
 
+function eligibleTodos(todos: Todo[]) {
+  const today = dateKey(new Date())
+  return todos.filter((todo) => todo.status !== 'done' && todo.scheduledDate <= today)
+}
+
+function initialCleanupState(initialTodos: Todo[]): CleanupState {
+  const todos = eligibleTodos(initialTodos)
+  return {
+    todos,
+    interaction: todos.length > 0 ? { phase: 'entering' } : { phase: 'complete' },
+    error: null,
+  }
+}
+
+function cleanupReducer(state: CleanupState, action: CleanupAction): CleanupState {
+  switch (action.type) {
+    case 'reset':
+      return initialCleanupState(action.todos)
+    case 'animation-finished':
+      if (state.interaction.phase !== action.phase) return state
+      return { ...state, interaction: { phase: 'ready' } }
+    case 'commit':
+      if (state.interaction.phase !== 'ready' || state.todos.length === 0) return state
+      return {
+        ...state,
+        interaction: { phase: 'committing', direction: action.direction },
+        error: null,
+      }
+    case 'commit-succeeded': {
+      if (state.interaction.phase !== 'committing') return state
+      const todos = state.todos.filter((todo) => todo.id !== action.todoId)
+      return {
+        todos,
+        interaction: todos.length > 0 ? { phase: 'entering' } : { phase: 'complete' },
+        error: null,
+      }
+    }
+    case 'commit-failed':
+      if (state.interaction.phase !== 'committing') return state
+      return {
+        ...state,
+        interaction: { phase: 'recovering' },
+        error: 'That task could not be updated. Try again.',
+      }
+  }
+}
+
 function CleanupCard({
   todo,
-  isActing,
-  isInputLocked,
-  exitDirection,
-  onReady,
+  interaction,
+  instructionsId,
+  onAnimationFinished,
+  onAction,
   onDragEnd,
 }: {
   todo: Todo
-  isActing: boolean
-  isInputLocked: boolean
-  exitDirection: -1 | 1
-  onReady: () => void
+  interaction: Interaction
+  instructionsId: string
+  onAnimationFinished: (phase: AnimatedPhase) => void
+  onAction: (direction: Direction) => void
   onDragEnd: (
     event: MouseEvent | TouchEvent | PointerEvent,
     info: PanInfo,
-  ) => -1 | 1 | null
+  ) => void
 }) {
   const cardRef = useRef<HTMLElement | null>(null)
-  const committed = useRef(false)
-  const exitTarget = useRef(0)
   const x = useMotionValue(0)
   const shouldReduceMotion = useReducedMotion()
   const rotate = useTransform(x, [-200, 0, 200], [-10, 0, 10])
   const deleteOpacity = useTransform(x, [-100, -28, 0], [1, 0.25, 0])
   const tomorrowOpacity = useTransform(x, [0, 28, 100], [0, 0.25, 1])
 
-  const commitToEdge = useCallback(
-    (direction: -1 | 1) => {
-      if (committed.current || !cardRef.current) return
-
-      committed.current = true
-      const bounds = cardRef.current.getBoundingClientRect()
-      const currentX = x.get()
-      const beyondViewport =
-        direction === 1
-          ? currentX + window.innerWidth - bounds.left + 32
-          : currentX - bounds.right - 32
-
-      exitTarget.current =
-        direction === 1
-          ? Math.max(beyondViewport, currentX + 32)
-          : Math.min(beyondViewport, currentX - 32)
-
-      if (shouldReduceMotion) {
-        x.set(exitTarget.current)
-      } else {
-        void animate(x, exitTarget.current, { duration: 0.18, ease: 'easeOut' })
-      }
-    },
-    [shouldReduceMotion, x],
-  )
+  useEffect(() => {
+    if (interaction.phase === 'entering') cardRef.current?.focus()
+  }, [interaction.phase])
 
   useEffect(() => {
-    if (isActing) {
-      commitToEdge(exitDirection)
+    if (interaction.phase === 'committing') {
+      if (shouldReduceMotion) return
+
+      const target = interaction.direction * (window.innerWidth + 32)
+      const animation = animate(x, target, { duration: 0.18, ease: 'easeOut' })
+      return () => animation.stop()
+    }
+
+    if (interaction.phase !== 'recovering') return
+
+    if (shouldReduceMotion) {
+      x.set(0)
+      onAnimationFinished('recovering')
       return
     }
 
-    if (!committed.current) return
+    let cancelled = false
+    const animation = animate(x, 0, { duration: 0.16, ease: 'easeOut' })
+    void animation.then(() => {
+      if (!cancelled) onAnimationFinished('recovering')
+    })
 
-    committed.current = false
-    exitTarget.current = 0
-    if (shouldReduceMotion) {
-      x.set(0)
-      onReady()
-    } else {
-      void animate(x, 0, { duration: 0.16, ease: 'easeOut' }).then(onReady)
+    return () => {
+      cancelled = true
+      animation.stop()
     }
-  }, [commitToEdge, exitDirection, isActing, onReady, shouldReduceMotion, x])
+  }, [interaction, onAnimationFinished, shouldReduceMotion, x])
 
-  const finishDrag = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    const direction = onDragEnd(event, info)
-    if (direction) commitToEdge(direction)
+  const handleKeyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
+    if (event.repeat || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+
+    event.preventDefault()
+    onAction(event.key === 'ArrowLeft' ? -1 : 1)
   }
 
   return (
     <motion.article
       ref={cardRef}
-      aria-busy={isActing}
-      variants={{
-        exit: () => ({
-          opacity: 0,
-          x: exitTarget.current,
-        }),
-      }}
-      drag={isInputLocked ? false : 'x'}
+      tabIndex={0}
+      aria-busy={interaction.phase === 'committing'}
+      aria-describedby={instructionsId}
+      aria-keyshortcuts="ArrowLeft ArrowRight"
+      drag={interaction.phase === 'ready' ? 'x' : false}
       dragConstraints={{ left: 0, right: 0 }}
       dragElastic={0.65}
-      onDragEnd={finishDrag}
+      onDragEnd={onDragEnd}
+      onKeyDown={handleKeyDown}
       onAnimationComplete={() => {
-        if (!isActing && !committed.current) onReady()
+        if (interaction.phase === 'entering') onAnimationFinished('entering')
       }}
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
-      exit="exit"
+      exit={{ opacity: 0 }}
       transition={{ duration: 0.16, ease: 'easeOut' }}
       whileDrag={{ scale: 1.01 }}
       style={{ x, rotate }}
-      className="relative flex aspect-square cursor-grab touch-pan-y items-center justify-center rounded-2xl bg-card p-8 text-center shadow-card ring-1 ring-foreground/10 active:cursor-grabbing sm:p-10"
+      className="relative flex aspect-square cursor-grab touch-pan-y items-center justify-center rounded-2xl bg-card p-8 text-center shadow-card ring-1 ring-foreground/10 outline-none focus-visible:ring-3 focus-visible:ring-ring/50 active:cursor-grabbing sm:p-10"
     >
       <motion.span
         aria-hidden="true"
@@ -154,41 +219,26 @@ function CleanupCard({
 }
 
 export function CleanupMode({ initialTodos }: { initialTodos: Todo[] }) {
-  const [todos, setTodos] = useState<Todo[] | null>(null)
-  const [exitDirection, setExitDirection] = useState<-1 | 1>(1)
-  const [error, setError] = useState<string | null>(null)
-  const [isActing, setIsActing] = useState(false)
-  const [isInputLocked, setIsInputLocked] = useState(true)
-  const pending = useRef(true)
+  const [state, dispatch] = useReducer(cleanupReducer, initialTodos, initialCleanupState)
+  const instructionsId = useId()
   const deleteTodoMutation = useServerFn(deleteTodo)
   const deferTodoMutation = useServerFn(deferTodo)
-  const current = todos?.[0]
+  const current = state.todos[0]
+  const isInputLocked = state.interaction.phase !== 'ready'
 
   useEffect(() => {
-    const today = dateKey(new Date())
-    const eligible = initialTodos.filter(
-      (todo) => todo.status !== 'done' && todo.scheduledDate <= today,
-    )
-
-    pending.current = eligible.length > 0
-    setIsInputLocked(eligible.length > 0)
-    setTodos(eligible)
+    dispatch({ type: 'reset', todos: initialTodos })
   }, [initialTodos])
 
-  const markCardReady = useCallback(() => {
-    pending.current = false
-    setIsInputLocked(false)
+  const handleAnimationFinished = useCallback((phase: AnimatedPhase) => {
+    dispatch({ type: 'animation-finished', phase })
   }, [])
 
   const actOnCurrent = useCallback(
-    async (direction: -1 | 1) => {
-      if (!current || pending.current) return
+    async (direction: Direction) => {
+      if (!current || state.interaction.phase !== 'ready') return
 
-      pending.current = true
-      setExitDirection(direction)
-      setIsInputLocked(true)
-      setIsActing(true)
-      setError(null)
+      flushSync(() => dispatch({ type: 'commit', direction }))
 
       try {
         if (direction === -1) {
@@ -199,42 +249,22 @@ export function CleanupMode({ initialTodos }: { initialTodos: Todo[] }) {
           play('swoosh')
         }
 
-        setTodos((remaining) =>
-          remaining ? remaining.filter((todo) => todo.id !== current.id) : remaining,
-        )
+        dispatch({ type: 'commit-succeeded', todoId: current.id })
       } catch {
-        setError('That task could not be updated. Try again.')
         play('error')
-        setIsActing(false)
+        dispatch({ type: 'commit-failed' })
       }
     },
-    [current, deferTodoMutation, deleteTodoMutation],
+    [current, deferTodoMutation, deleteTodoMutation, state.interaction.phase],
   )
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.repeat) return
-      if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
-      if (event.target instanceof HTMLElement && event.target.closest('input, textarea, select')) return
-      if (event.target instanceof HTMLElement && event.target.closest('[role="menu"], [role="menuitem"]')) return
-      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
-
-      event.preventDefault()
-      void actOnCurrent(event.key === 'ArrowLeft' ? -1 : 1)
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [actOnCurrent])
 
   const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     const crossesDistance = Math.abs(info.offset.x) >= SWIPE_DISTANCE
     const crossesVelocity = Math.abs(info.velocity.x) >= SWIPE_VELOCITY
-    if (!crossesDistance && !crossesVelocity) return null
+    if (!crossesDistance && !crossesVelocity) return
 
     const direction = (crossesDistance ? info.offset.x : info.velocity.x) < 0 ? -1 : 1
     void actOnCurrent(direction)
-    return direction
   }
 
   return (
@@ -259,12 +289,17 @@ export function CleanupMode({ initialTodos }: { initialTodos: Todo[] }) {
         <h1 className="font-hand text-4xl leading-tight sm:text-5xl">Clean up</h1>
         {current && (
           <p aria-live="polite" className="mt-2 text-sm text-muted-foreground">
-            {todos?.length} {todos?.length === 1 ? 'task' : 'tasks'} left
+            {state.todos.length} {state.todos.length === 1 ? 'task' : 'tasks'} left
           </p>
         )}
       </div>
 
-      <div className="mt-8 sm:mt-10">
+      <div className="mt-3">
+        {current && (
+          <p className="mb-3 hidden text-center text-xs text-muted-foreground sm:block">
+            Focused card: ← delete · → tomorrow
+          </p>
+        )}
         <div className="flex items-center gap-3 sm:gap-4">
           <div className="hidden w-9 shrink-0 justify-center sm:flex">
             {current && (
@@ -284,30 +319,15 @@ export function CleanupMode({ initialTodos }: { initialTodos: Todo[] }) {
           </div>
 
           <div className="min-w-0 flex-1">
-            <AnimatePresence
-              mode="wait"
-              initial={false}
-              onExitComplete={() => {
-                setIsActing(false)
-                if (!current) markCardReady()
-              }}
-            >
-              {todos === null ? (
-                <div
-                  key="loading"
-                  role="status"
-                  className="flex aspect-square items-center justify-center text-sm text-muted-foreground"
-                >
-                  Loading tasks…
-                </div>
-              ) : current ? (
+            <AnimatePresence mode="wait">
+              {current ? (
                 <CleanupCard
                   key={current.id}
                   todo={current}
-                  isActing={isActing}
-                  isInputLocked={isInputLocked}
-                  exitDirection={exitDirection}
-                  onReady={markCardReady}
+                  interaction={state.interaction}
+                  instructionsId={instructionsId}
+                  onAnimationFinished={handleAnimationFinished}
+                  onAction={(direction) => void actOnCurrent(direction)}
                   onDragEnd={handleDragEnd}
                 />
               ) : (
@@ -352,6 +372,10 @@ export function CleanupMode({ initialTodos }: { initialTodos: Todo[] }) {
 
         {current && (
           <>
+            <p id={instructionsId} className="sr-only">
+              With this task card focused, press Left Arrow to delete it or Right Arrow to move it
+              to tomorrow.
+            </p>
             <div className="mt-5 flex items-center justify-center gap-8 sm:hidden">
               <Button
                 type="button"
@@ -381,15 +405,12 @@ export function CleanupMode({ initialTodos }: { initialTodos: Todo[] }) {
             <p className="mt-3 text-center text-xs text-muted-foreground sm:hidden">
               Swipe left to delete · right for tomorrow
             </p>
-            <p className="mt-4 hidden text-center text-xs text-muted-foreground sm:block">
-              Use ← and →
-            </p>
           </>
         )}
 
-        {error && (
+        {state.error && (
           <p role="alert" className="mt-5 text-center text-sm text-destructive">
-            {error}
+            {state.error}
           </p>
         )}
       </div>

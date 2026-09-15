@@ -24,6 +24,7 @@ function pwaServiceWorker(): Plugin {
           'apple-icon.png',
           'icon*.{png,svg}',
           'logo.png',
+          'offline.html',
           'pwa-*.png',
           'manifest.webmanifest',
         ],
@@ -35,8 +36,17 @@ function pwaServiceWorker(): Plugin {
         globPatterns: ['assets/**/*.{js,css,woff2}'],
         additionalManifestEntries: staticAssets.manifestEntries,
         navigateFallback: null,
+        runtimeCaching: [
+          {
+            urlPattern: ({ request }) => request.mode === 'navigate',
+            handler: 'NetworkOnly',
+            options: {
+              precacheFallback: { fallbackURL: '/offline.html' },
+            },
+          },
+        ],
         cleanupOutdatedCaches: true,
-        clientsClaim: false,
+        clientsClaim: true,
         skipWaiting: false,
         sourcemap: false,
       })

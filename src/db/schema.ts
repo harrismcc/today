@@ -1,6 +1,10 @@
 import { relations, sql } from 'drizzle-orm'
 import { check, index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
 
+import { todoStatuses } from '@/domain/todos'
+
+export { todoStatuses, type TodoStatus } from '@/domain/todos'
+
 export const user = sqliteTable('user', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
@@ -304,10 +308,6 @@ export const oauthClientAssertion = sqliteTable('oauth_client_assertion', {
   expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
 })
 
-export const todoStatuses = ['todo', 'postponed', 'done'] as const
-
-export type TodoStatus = (typeof todoStatuses)[number]
-
 export const todos = sqliteTable(
   'todos',
   {
@@ -318,12 +318,13 @@ export const todos = sqliteTable(
     text: text('text').notNull(),
     status: text('status', { enum: todoStatuses }).notNull().default('todo'),
     scheduledDate: text('scheduled_date').notNull(),
+    postponedAt: integer('postponed_at', { mode: 'timestamp_ms' }),
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
     deletedAt: integer('deleted_at', { mode: 'timestamp_ms' }),
   },
   (table) => [
-    check('todos_status_check', sql`${table.status} in ('todo', 'postponed', 'done')`),
+    check('todos_status_check', sql`${table.status} in ('todo', 'done')`),
     index('todos_user_scheduled_date_idx').on(table.userId, table.scheduledDate),
   ],
 )

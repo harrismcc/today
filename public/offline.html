@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f4f0e6" />
+    <title>Offline — Today</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: system-ui, sans-serif;
+        color: #403d38;
+        background: #f4f0e6;
+      }
+
+      body {
+        min-height: 100vh;
+        margin: 0;
+        display: grid;
+        place-items: center;
+        padding: 1.5rem;
+        box-sizing: border-box;
+      }
+
+      main {
+        max-width: 26rem;
+        text-align: center;
+      }
+
+      h1 {
+        margin: 0 0 0.5rem;
+        font-size: 1.5rem;
+      }
+
+      p {
+        margin: 0 0 1.25rem;
+        color: #6f6960;
+        line-height: 1.5;
+      }
+
+      a {
+        display: inline-block;
+        border-radius: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        color: #f4f0e6;
+        background: #403d38;
+        font-size: 0.875rem;
+        font-weight: 600;
+        text-decoration: none;
+      }
+
+      a:focus-visible {
+        outline: 3px solid #aaa197;
+        outline-offset: 3px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>You’re offline</h1>
+      <p>Today needs a connection to load your list. Reconnect, then try again.</p>
+      <a href="">Try again</a>
+    </main>
+  </body>
+</html>

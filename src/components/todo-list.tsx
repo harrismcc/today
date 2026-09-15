@@ -10,38 +10,42 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { play } from "@foleyjs/react"
-import { createTodo, deleteTodo, getTodos, postponeTodo, updateTodoStatus } from "@/data/todos"
-import type { Todo, TodoStatus } from "@/db/schema"
+import { createTodo, deleteTodo, getTodos, rescheduleTodo, updateTodoStatus } from "@/data/todos"
+import type { Todo } from "@/db/schema"
+import {
+  bucketTodos,
+  localDateFromKey,
+  localDateKey,
+  millisecondsUntilNextLocalDay,
+  reconcileTodos,
+  shiftDateKey,
+  sortTodos,
+  type TodoStatus,
+} from "@/domain/todos"
 
 const TODO_STALE_TIME = 5 * 60 * 1000
 const STALE_CHECK_INTERVAL = 60 * 1000
 
-// A stable local YYYY-MM-DD key for a given date.
-function dateKey(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
-}
-
-function groupByDay(todos: Todo[]) {
-  return todos.reduce<Record<string, Todo[]>>((byDay, todo) => {
-    const day = byDay[todo.scheduledDate] ?? []
-    day.push(todo)
-    byDay[todo.scheduledDate] = day
-    return byDay
-  }, {})
-}
-
 export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
-  const [byDay, setByDay] = useState(() => groupByDay(initialTodos))
+  const [todoItems, setTodoItems] = useState(() => sortTodos(initialTodos))
   const [offset, setOffset] = useState(0)
   const [draft, setDraft] = useState("")
+  const [todayKey, setTodayKey] = useState(() => localDateKey(new Date()))
+  const [pendingTodoIds, setPendingTodoIds] = useState<ReadonlySet<string>>(() => new Set())
+  const [isCreating, setIsCreating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const lastFetchedAt = useRef(Date.now())
   const localDataVersion = useRef(0)
   const refreshInFlight = useRef<Promise<unknown> | null>(null)
+  const pendingTodoIdsRef = useRef(new Set<string>())
+  const createInFlight = useRef(false)
   const getTodosQuery = useServerFn(getTodos)
   const createTodoMutation = useServerFn(createTodo)
   const deleteTodoMutation = useServerFn(deleteTodo)
-  const postponeTodoMutation = useServerFn(postponeTodo)
+  const rescheduleTodoMutation = useServerFn(rescheduleTodo)
   const updateTodoStatusMutation = useServerFn(updateTodoStatus)
+
+  const byDay = useMemo(() => bucketTodos(todoItems), [todoItems])
 
   const refreshTodos = useCallback(() => {
     if (refreshInFlight.current) return refreshInFlight.current
@@ -51,10 +55,12 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
       .then((latestTodos) => {
         if (localDataVersion.current !== version) return
 
-        setByDay(groupByDay(latestTodos))
+        setTodoItems((current) =>
+          reconcileTodos(current, { type: "replace", todos: latestTodos }),
+        )
         lastFetchedAt.current = Date.now()
       })
-      .catch(() => undefined)
+      .catch(() => setError("Todos could not be refreshed. Try again."))
       .finally(() => {
         refreshInFlight.current = null
       })
@@ -62,6 +68,33 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
     refreshInFlight.current = refresh
     return refresh
   }, [getTodosQuery])
+
+  useEffect(() => {
+    let midnightTimer = 0
+
+    const syncLocalDay = () => {
+      const now = new Date()
+      setTodayKey(localDateKey(now))
+      window.clearTimeout(midnightTimer)
+      midnightTimer = window.setTimeout(
+        syncLocalDay,
+        millisecondsUntilNextLocalDay(now) + 50,
+      )
+    }
+    const syncVisibleLocalDay = () => {
+      if (document.visibilityState === "visible") syncLocalDay()
+    }
+
+    syncLocalDay()
+    window.addEventListener("focus", syncLocalDay)
+    document.addEventListener("visibilitychange", syncVisibleLocalDay)
+
+    return () => {
+      window.clearTimeout(midnightTimer)
+      window.removeEventListener("focus", syncLocalDay)
+      document.removeEventListener("visibilitychange", syncVisibleLocalDay)
+    }
+  }, [])
 
   useEffect(() => {
     const refreshIfStale = () => {
@@ -82,105 +115,104 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
     }
   }, [refreshTodos])
 
-  // The date currently in view, derived from a day offset relative to today.
-  const viewed = useMemo(() => {
-    const d = new Date()
-    d.setHours(0, 0, 0, 0)
-    d.setDate(d.getDate() + offset)
-    return d
-  }, [offset])
-
-  const key = dateKey(viewed)
+  const key = useMemo(() => shiftDateKey(todayKey, offset), [offset, todayKey])
+  const viewed = useMemo(() => localDateFromKey(key), [key])
   const todos = byDay[key] ?? []
 
-  const setStatus = async (id: string, status: TodoStatus, origin: { x: number; y: number }) => {
+  const runTodoMutation = useCallback(async <T,>(id: string, mutation: () => Promise<T>) => {
+    if (pendingTodoIdsRef.current.has(id)) return undefined
+
+    pendingTodoIdsRef.current.add(id)
+    setPendingTodoIds(new Set(pendingTodoIdsRef.current))
+    setError(null)
+
     try {
-      const updated = await updateTodoStatusMutation({ data: { id, status } })
-      const finishesDay =
-        status === "done" &&
-        todos.some((todo) => todo.id === id && todo.status !== "done") &&
-        todos.every((todo) => todo.id === id || todo.status === "done")
-
-      localDataVersion.current += 1
-      setByDay((prev) => ({
-        ...prev,
-        [key]: (prev[key] ?? []).map((todo) => (todo.id === id ? updated : todo)),
-      }))
-
-      if (finishesDay) {
-        play("complete")
-        void confetti({
-          colors: ["#5d9968", "#d9a441", "#d36c5f", "#7698b3", "#9b78ad"],
-          disableForReducedMotion: true,
-          gravity: 0.85,
-          origin,
-          particleCount: 60,
-          scalar: 0.8,
-          spread: 70,
-          startVelocity: 26,
-          ticks: 120,
-        })
-      } else {
-        play(status === "done" ? "success" : "off")
-      }
-    } catch (error) {
+      return await mutation()
+    } catch {
+      setError("That todo could not be updated. Try again.")
       play("error")
-      throw error
+      return undefined
+    } finally {
+      pendingTodoIdsRef.current.delete(id)
+      setPendingTodoIds(new Set(pendingTodoIdsRef.current))
+    }
+  }, [])
+
+  const setStatus = async (id: string, status: TodoStatus, origin: { x: number; y: number }) => {
+    const updated = await runTodoMutation(id, () =>
+      updateTodoStatusMutation({ data: { id, status } }),
+    )
+    if (!updated) return
+
+    const finishesDay =
+      status === "done" &&
+      todos.some((todo) => todo.id === id && todo.status !== "done") &&
+      todos.every((todo) => todo.id === id || todo.status === "done")
+
+    localDataVersion.current += 1
+    setTodoItems((current) => reconcileTodos(current, { type: "upsert", todo: updated }))
+
+    if (finishesDay) {
+      play("complete")
+      void confetti({
+        colors: ["#5d9968", "#d9a441", "#d36c5f", "#7698b3", "#9b78ad"],
+        disableForReducedMotion: true,
+        gravity: 0.85,
+        origin,
+        particleCount: 60,
+        scalar: 0.8,
+        spread: 70,
+        startVelocity: 26,
+        ticks: 120,
+      })
+    } else {
+      play(status === "done" ? "success" : "off")
     }
   }
 
   const removeTodo = async (id: string) => {
-    try {
-      await deleteTodoMutation({ data: { id } })
-      localDataVersion.current += 1
-      setByDay((prev) =>
-        Object.fromEntries(
-          Object.entries(prev).map(([day, todos]) => [day, todos.filter((todo) => todo.id !== id)]),
-        ),
-      )
-      play("drop")
-    } catch (error) {
-      play("error")
-      throw error
-    }
+    const removed = await runTodoMutation(id, () => deleteTodoMutation({ data: { id } }))
+    if (!removed) return
+
+    localDataVersion.current += 1
+    setTodoItems((current) => reconcileTodos(current, { type: "remove", id: removed.id }))
+    play("drop")
   }
 
   const postpone = async (id: string) => {
-    try {
-      const updated = await postponeTodoMutation({ data: { id } })
-      localDataVersion.current += 1
-      setByDay((prev) => {
-        const withoutTodo = Object.fromEntries(
-          Object.entries(prev).map(([day, todos]) => [day, todos.filter((todo) => todo.id !== id)]),
-        )
+    const todo = todoItems.find((candidate) => candidate.id === id)
+    if (!todo) return
 
-        return {
-          ...withoutTodo,
-          [updated.scheduledDate]: [...(withoutTodo[updated.scheduledDate] ?? []), updated],
-        }
-      })
-      play("swoosh")
-    } catch (error) {
-      play("error")
-      throw error
-    }
+    const scheduledDate = shiftDateKey(todo.scheduledDate, 1)
+    const updated = await runTodoMutation(id, () =>
+      rescheduleTodoMutation({ data: { id, scheduledDate } }),
+    )
+    if (!updated) return
+
+    localDataVersion.current += 1
+    setTodoItems((current) => reconcileTodos(current, { type: "upsert", todo: updated }))
+    play("swoosh")
   }
 
   const addTodo = async (e: React.FormEvent) => {
     e.preventDefault()
     const text = draft.trim()
-    if (!text) return
+    if (!text || createInFlight.current) return
+
+    createInFlight.current = true
+    setIsCreating(true)
+    setError(null)
     try {
       const todo = await createTodoMutation({ data: { text, scheduledDate: key } })
       localDataVersion.current += 1
-      setByDay((prev) => ({
-        ...prev,
-        [key]: [...(prev[key] ?? []), todo],
-      }))
+      setTodoItems((current) => reconcileTodos(current, { type: "upsert", todo }))
       setDraft("")
-    } catch (error) {
+    } catch {
+      setError("That todo could not be added. Try again.")
       play("error")
-      throw error
+    } finally {
+      createInFlight.current = false
+      setIsCreating(false)
     }
   }
 
@@ -253,6 +285,7 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
             <TodoItem
               key={todo.id}
               todo={todo}
+              pending={pendingTodoIds.has(todo.id)}
               onSetStatus={setStatus}
               onPostpone={postpone}
               onDelete={removeTodo}
@@ -271,9 +304,16 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
           onChange={(e) => setDraft(e.target.value)}
           placeholder={offset === 0 ? "Add something for today…" : "Add something…"}
           aria-label="Add a new todo"
+          disabled={isCreating}
           className="min-w-0 flex-1 bg-transparent font-hand text-lg leading-relaxed text-foreground placeholder:text-muted-foreground/70 focus:outline-none sm:text-xl"
         />
       </form>
+
+      {error && (
+        <p role="alert" className="mt-3 text-sm text-destructive">
+          {error}
+        </p>
+      )}
     </section>
   )
 }

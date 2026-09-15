@@ -1,4 +1,3 @@
-import { createMcpProtectedRequestHandler } from '@better-auth/mcp'
 import {
   createMcpHandler,
   hostHeaderValidationResponse,
@@ -9,30 +8,36 @@ import {
 import { createDpopReplayStore } from 'better-auth/oauth2'
 import { z } from 'zod'
 
-import { todoStatuses, type Todo } from '@/db/schema'
+import type { Todo } from '@/db/schema'
 import {
   insertTodo,
   listTodos,
+  rescheduleTodoToDate,
   setTodoStatus,
   softDeleteTodo,
 } from '@/data/todos.server'
-import { createAuth } from '@/lib/auth.server'
+import {
+  createTodoInputSchema,
+  dateKeySchema,
+  rescheduleTodoInputSchema,
+  todoIdInputSchema,
+  todoListFiltersSchema,
+  todoStatusInputSchema,
+  todoStatusSchema,
+} from '@/domain/todos'
+import { auth } from '@/lib/auth.server'
 import { mcpResource, mcpScope } from '@/lib/mcp-config.server'
-
-const dateKeyPattern = /^\d{4}-\d{2}-\d{2}$/
-
-const dateKeySchema = z.string().refine((value) => {
-  if (!dateKeyPattern.test(value)) return false
-
-  const [year, month, day] = value.split('-').map(Number)
-  return new Date(Date.UTC(year, month - 1, day)).toISOString().slice(0, 10) === value
-}, 'Expected a valid date in YYYY-MM-DD format')
+import {
+  createMcpProtectedHandlerWithJwksLoader,
+  loadJwksFromAuthHandler,
+} from '@/lib/mcp-jwks.server'
 
 const todoSchema = z.object({
   id: z.string(),
   text: z.string(),
-  status: z.enum(todoStatuses),
+  status: todoStatusSchema,
   scheduledDate: dateKeySchema,
+  postponedAt: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
 })
@@ -43,6 +48,7 @@ function serializeTodo(todo: Todo) {
     text: todo.text,
     status: todo.status,
     scheduledDate: todo.scheduledDate,
+    postponedAt: todo.postponedAt?.toISOString() ?? null,
     createdAt: todo.createdAt.toISOString(),
     updatedAt: todo.updatedAt.toISOString(),
   }
@@ -64,18 +70,14 @@ const mcpHandler = createMcpHandler(({ authInfo }) => {
       title: 'List todos',
       description:
         'List the signed-in user’s todos, optionally filtered by calendar date or status.',
-      inputSchema: z.object({
-        scheduledDate: dateKeySchema.optional(),
-        status: z.enum(todoStatuses).optional(),
-      }),
+      inputSchema: todoListFiltersSchema,
       outputSchema: z.object({ todos: z.array(todoSchema) }),
       annotations: { readOnlyHint: true },
     },
     async ({ scheduledDate, status }) => {
-      const todos = (await listTodos(userId))
-        .filter((todo) => !scheduledDate || todo.scheduledDate === scheduledDate)
-        .filter((todo) => !status || todo.status === status)
-        .map(serializeTodo)
+      const todos = (
+        await listTodos(userId, { scheduledDate, status })
+      ).map(serializeTodo)
       const output = { todos }
 
       return {
@@ -91,10 +93,7 @@ const mcpHandler = createMcpHandler(({ authInfo }) => {
       title: 'Create todo',
       description:
         'Create a todo for the signed-in user on a YYYY-MM-DD calendar date.',
-      inputSchema: z.object({
-        text: z.string().trim().min(1, 'Todo text is required'),
-        scheduledDate: dateKeySchema,
-      }),
+      inputSchema: createTodoInputSchema,
       outputSchema: z.object({ todo: todoSchema }),
       annotations: { destructiveHint: false },
     },
@@ -114,11 +113,8 @@ const mcpHandler = createMcpHandler(({ authInfo }) => {
     'set_todo_status',
     {
       title: 'Set todo status',
-      description: 'Set one of the signed-in user’s todos to todo, postponed, or done.',
-      inputSchema: z.object({
-        id: z.string().min(1, 'Todo id is required'),
-        status: z.enum(todoStatuses),
-      }),
+      description: 'Set one of the signed-in user’s todos to todo or done.',
+      inputSchema: todoStatusInputSchema,
       outputSchema: z.object({ todo: todoSchema }),
       annotations: { destructiveHint: false },
     },
@@ -133,11 +129,35 @@ const mcpHandler = createMcpHandler(({ authInfo }) => {
   )
 
   server.registerTool(
+    'reschedule_todo',
+    {
+      title: 'Reschedule todo',
+      description:
+        'Move one of the signed-in user’s todos to an absolute YYYY-MM-DD date.',
+      inputSchema: rescheduleTodoInputSchema,
+      outputSchema: z.object({ todo: todoSchema }),
+      annotations: { destructiveHint: false },
+    },
+    async ({ id, scheduledDate }) => {
+      const output = {
+        todo: serializeTodo(
+          await rescheduleTodoToDate(userId, { id, scheduledDate }),
+        ),
+      }
+
+      return {
+        content: [{ type: 'text', text: JSON.stringify(output) }],
+        structuredContent: output,
+      }
+    },
+  )
+
+  server.registerTool(
     'delete_todo',
     {
       title: 'Delete todo',
       description: 'Delete one of the signed-in user’s todos.',
-      inputSchema: z.object({ id: z.string().min(1, 'Todo id is required') }),
+      inputSchema: todoIdInputSchema,
       outputSchema: z.object({ id: z.string() }),
       annotations: { destructiveHint: true },
     },
@@ -164,23 +184,13 @@ function accessToken(request: Request) {
 
 function authenticatedMcpHandler(request: Request) {
   const issuer = new URL('/api/auth', request.url).href
-  const auth = createAuth()
 
   return auth.$context.then(({ internalAdapter }) =>
-    createMcpProtectedRequestHandler(
+    createMcpProtectedHandlerWithJwksLoader(
       {
         issuer,
         audience: mcpResource,
-        // Cloudflare blocks a Worker from fetching its own public URL. Better Auth
-        // accepts a JWKS loader at runtime even though its public type only allows a URL.
-        jwksUrl: (async () => {
-          const response = await auth.handler(
-            new Request(`${issuer}/jwks`, {
-              headers: { accept: 'application/json' },
-            }),
-          )
-          return response.ok ? response.json() : undefined
-        }) as unknown as string,
+        jwksLoader: () => loadJwksFromAuthHandler(auth.handler, `${issuer}/jwks`),
         requiredScopes: [mcpScope],
         dpop: { replayStore: createDpopReplayStore(internalAdapter) },
       },
