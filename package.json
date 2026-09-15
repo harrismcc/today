@@ -12,8 +12,9 @@
     "deploy:production": "pnpm run db:migrate:remote && wrangler deploy",
     "cf-typegen": "wrangler types",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "wrangler d1 migrations apply DB --local",
+    "db:migrate": "wrangler d1 migrations apply DB --local && pnpm db:seed",
     "db:migrate:remote": "wrangler d1 migrations apply DB --remote",
+    "db:seed": "node scripts/seed-local.mjs",
     "postinstall": "WRANGLER_LOG=warn pnpm run --silent cf-typegen"
   },
   "dependencies": {

@@ -12,7 +12,7 @@ pnpm db:migrate
 pnpm dev
 ```
 
-`pnpm db:migrate` applies the checked-in Drizzle migrations to Wrangler's isolated local D1 database. Local D1 data is stored under `.wrangler/`.
+`pnpm db:migrate` applies the checked-in Drizzle migrations to Wrangler's isolated local D1 database and seeds a verified test account. Sign in locally with `test@example.com` and `password`. The seed is repeatable and only targets Wrangler's local database. Local D1 data is stored under `.wrangler/`.
 
 ## Deploy to Cloudflare
 
