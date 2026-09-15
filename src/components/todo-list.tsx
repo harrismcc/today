@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Plus, ChevronLeft, ChevronRight, LogOut } from "lucide-react"
 import { AnimatePresence } from "motion/react"
 import { useServerFn } from "@tanstack/react-start"
@@ -7,9 +7,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { play } from "@foleyjs/react"
-import { createTodo, deleteTodo, postponeTodo, updateTodoStatus } from "@/data/todos"
+import { createTodo, deleteTodo, getTodos, postponeTodo, updateTodoStatus } from "@/data/todos"
 import type { Todo, TodoStatus } from "@/db/schema"
 import { authClient } from "@/lib/auth-client"
+
+const TODO_STALE_TIME = 5 * 60 * 1000
+const STALE_CHECK_INTERVAL = 60 * 1000
 
 // A stable local YYYY-MM-DD key for a given date.
 function dateKey(d: Date) {
@@ -29,10 +32,53 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
   const [byDay, setByDay] = useState(() => groupByDay(initialTodos))
   const [offset, setOffset] = useState(0)
   const [draft, setDraft] = useState("")
+  const lastFetchedAt = useRef(Date.now())
+  const localDataVersion = useRef(0)
+  const refreshInFlight = useRef<Promise<unknown> | null>(null)
+  const getTodosQuery = useServerFn(getTodos)
   const createTodoMutation = useServerFn(createTodo)
   const deleteTodoMutation = useServerFn(deleteTodo)
   const postponeTodoMutation = useServerFn(postponeTodo)
   const updateTodoStatusMutation = useServerFn(updateTodoStatus)
+
+  const refreshTodos = useCallback(() => {
+    if (refreshInFlight.current) return refreshInFlight.current
+
+    const version = localDataVersion.current
+    const refresh = getTodosQuery()
+      .then((latestTodos) => {
+        if (localDataVersion.current !== version) return
+
+        setByDay(groupByDay(latestTodos))
+        lastFetchedAt.current = Date.now()
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        refreshInFlight.current = null
+      })
+
+    refreshInFlight.current = refresh
+    return refresh
+  }, [getTodosQuery])
+
+  useEffect(() => {
+    const refreshIfStale = () => {
+      if (document.visibilityState !== "visible") return
+      if (Date.now() - lastFetchedAt.current < TODO_STALE_TIME) return
+
+      void refreshTodos()
+    }
+
+    const interval = window.setInterval(refreshIfStale, STALE_CHECK_INTERVAL)
+    window.addEventListener("focus", refreshIfStale)
+    document.addEventListener("visibilitychange", refreshIfStale)
+
+    return () => {
+      window.clearInterval(interval)
+      window.removeEventListener("focus", refreshIfStale)
+      document.removeEventListener("visibilitychange", refreshIfStale)
+    }
+  }, [refreshTodos])
 
   // The date currently in view, derived from a day offset relative to today.
   const viewed = useMemo(() => {
@@ -48,6 +94,7 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
   const setStatus = async (id: string, status: TodoStatus) => {
     try {
       const updated = await updateTodoStatusMutation({ data: { id, status } })
+      localDataVersion.current += 1
       setByDay((prev) => ({
         ...prev,
         [key]: (prev[key] ?? []).map((todo) => (todo.id === id ? updated : todo)),
@@ -62,6 +109,7 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
   const removeTodo = async (id: string) => {
     try {
       await deleteTodoMutation({ data: { id } })
+      localDataVersion.current += 1
       setByDay((prev) =>
         Object.fromEntries(
           Object.entries(prev).map(([day, todos]) => [day, todos.filter((todo) => todo.id !== id)]),
@@ -77,6 +125,7 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
   const postpone = async (id: string) => {
     try {
       const updated = await postponeTodoMutation({ data: { id } })
+      localDataVersion.current += 1
       setByDay((prev) => {
         const withoutTodo = Object.fromEntries(
           Object.entries(prev).map(([day, todos]) => [day, todos.filter((todo) => todo.id !== id)]),
@@ -100,6 +149,7 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
     if (!text) return
     try {
       const todo = await createTodoMutation({ data: { text, scheduledDate: key } })
+      localDataVersion.current += 1
       setByDay((prev) => ({
         ...prev,
         [key]: [...(prev[key] ?? []), todo],
