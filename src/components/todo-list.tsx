@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Plus, ChevronLeft, ChevronRight, LogOut } from "lucide-react"
+import { Plus, ChevronLeft, ChevronRight } from "lucide-react"
 import { AnimatePresence } from "motion/react"
 import { useSwipeable } from "react-swipeable"
 import { useServerFn } from "@tanstack/react-start"
 import confetti from "canvas-confetti"
+import { AppMenu } from "./app-menu"
 import { TodoItem } from "./todo-item"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,7 +12,6 @@ import { Separator } from "@/components/ui/separator"
 import { play } from "@foleyjs/react"
 import { createTodo, deleteTodo, getTodos, postponeTodo, updateTodoStatus } from "@/data/todos"
 import type { Todo, TodoStatus } from "@/db/schema"
-import { authClient } from "@/lib/auth-client"
 
 const TODO_STALE_TIME = 5 * 60 * 1000
 const STALE_CHECK_INTERVAL = 60 * 1000
@@ -192,11 +192,6 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
     day: "numeric",
   })
 
-  const signOut = async () => {
-    await authClient.signOut()
-    window.location.replace("/login")
-  }
-
   const changeDayFromSwipe = (event: { target: EventTarget | null }, change: number) => {
     const target = event.target
     if (!(target instanceof Element) || target.closest("button, input, a, li")) return
@@ -246,17 +241,7 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
               orientation="vertical"
               className="mx-1 data-vertical:h-4 data-vertical:self-auto"
             />
-            <Button
-              type="button"
-              variant="quiet"
-              size="icon"
-              sound="whoosh"
-              onClick={signOut}
-              aria-label="Sign out"
-              className="rounded-md"
-            >
-              <LogOut className="size-4" />
-            </Button>
+            <AppMenu />
           </div>
         </div>
         <h1 className="mt-1 font-hand text-3xl leading-tight text-foreground sm:mt-2 sm:text-5xl">{fullDate}</h1>
