@@ -6,7 +6,7 @@ import type { Todo, TodoStatus } from "@/db/schema"
 
 interface TodoItemProps {
   todo: Todo
-  onSetStatus: (id: string, status: TodoStatus) => void
+  onSetStatus: (id: string, status: TodoStatus, origin: { x: number; y: number }) => void
   onPostpone: (id: string) => void
   onDelete: (id: string) => void
 }
@@ -15,7 +15,13 @@ export function TodoItem({ todo, onSetStatus, onPostpone, onDelete }: TodoItemPr
   const { id, text, status } = todo
 
   // Clicking an active status again returns the item to plain "todo".
-  const toggle = (next: TodoStatus) => onSetStatus(id, status === next ? "todo" : next)
+  const toggle = (next: TodoStatus, target: HTMLButtonElement) => {
+    const bounds = target.getBoundingClientRect()
+    onSetStatus(id, status === next ? "todo" : next, {
+      x: (bounds.left + bounds.width / 2) / window.innerWidth,
+      y: (bounds.top + bounds.height / 2) / window.innerHeight,
+    })
+  }
 
   return (
     <motion.li
@@ -35,7 +41,7 @@ export function TodoItem({ todo, onSetStatus, onPostpone, onDelete }: TodoItemPr
         variant="status"
         size="icon-xs"
         sound={false}
-        onClick={() => toggle("done")}
+        onClick={(event) => toggle("done", event.currentTarget)}
         aria-label={status === "done" ? "Mark as not done" : "Mark as done"}
         aria-pressed={status === "done"}
         className={cn(

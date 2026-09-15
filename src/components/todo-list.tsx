@@ -3,6 +3,7 @@ import { Plus, ChevronLeft, ChevronRight, LogOut } from "lucide-react"
 import { AnimatePresence } from "motion/react"
 import { useSwipeable } from "react-swipeable"
 import { useServerFn } from "@tanstack/react-start"
+import confetti from "canvas-confetti"
 import { TodoItem } from "./todo-item"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -92,15 +93,36 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
   const key = dateKey(viewed)
   const todos = byDay[key] ?? []
 
-  const setStatus = async (id: string, status: TodoStatus) => {
+  const setStatus = async (id: string, status: TodoStatus, origin: { x: number; y: number }) => {
     try {
       const updated = await updateTodoStatusMutation({ data: { id, status } })
+      const finishesDay =
+        status === "done" &&
+        todos.some((todo) => todo.id === id && todo.status !== "done") &&
+        todos.every((todo) => todo.id === id || todo.status === "done")
+
       localDataVersion.current += 1
       setByDay((prev) => ({
         ...prev,
         [key]: (prev[key] ?? []).map((todo) => (todo.id === id ? updated : todo)),
       }))
-      play(status === "done" ? "success" : "off")
+
+      if (finishesDay) {
+        play("complete")
+        void confetti({
+          colors: ["#5d9968", "#d9a441", "#d36c5f", "#7698b3", "#9b78ad"],
+          disableForReducedMotion: true,
+          gravity: 0.85,
+          origin,
+          particleCount: 60,
+          scalar: 0.8,
+          spread: 70,
+          startVelocity: 26,
+          ticks: 120,
+        })
+      } else {
+        play(status === "done" ? "success" : "off")
+      }
     } catch (error) {
       play("error")
       throw error

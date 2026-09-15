@@ -41,6 +41,9 @@ importers:
       better-auth:
         specifier: 1.7.4
         version: 1.7.4(@tanstack/react-start@1.168.52(crossws@0.4.12(srvx@1.0.4))(esbuild@0.28.2)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(rolldown@1.2.8)(rollup@4.63.2)(supports-color@10.2.2)(vite@8.3.0(@types/node@24.10.4)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.13)))(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@types/better-sqlite3@9.6.0)(kysely@0.29.5))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      canvas-confetti:
+        specifier: ^1.9.4
+        version: 1.9.4
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -87,6 +90,9 @@ importers:
       '@tailwindcss/vite':
         specifier: ^4.3.3
         version: 4.3.3(vite@8.3.0(@types/node@24.10.4)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.13))
+      '@types/canvas-confetti':
+        specifier: ^1.9.0
+        version: 1.9.0
       '@types/node':
         specifier: ^24
         version: 24.10.4
@@ -2310,6 +2316,9 @@ packages:
   '@types/better-sqlite3@9.6.0':
     resolution: {integrity: sha512-ZEEwBSgMu7GYJOynoagg5X9JbxfL6dTJDsgViJIqh67jV44kyOr9RXfmFjLK5rzC4MWssP06t9hu/JwGDnUbCg==}
 
+  '@types/canvas-confetti@1.9.0':
+    resolution: {integrity: sha512-aBGj/dULrimR1XDZLtG9JwxX1b4HPRF6CX9Yfwh3NvstZEm1ZL7RBnel4keCPSqs1ANRu1u2Aoz9R+VmtjYuTg==}
+
   '@types/estree@1.0.9':
     resolution: {integrity: sha512-GhdPgy1el4/ImP05X05Uw4cw2/M93BCUmnEvWZNStlCzEKME4Fkk+YpoA5OiHNQmoS7Cafb8Xa3Pya8m1Qrzeg==}
 
@@ -2567,6 +2576,9 @@ packages:
 
   caniuse-lite@1.0.30001810:
     resolution: {integrity: sha512-TITQPUkaz+aVk5GL6NhOdwk1aEaNTSDPsGFWrTuhKGtjTF70jL/Oht2W4c6rXUe5fu7Ie19VIahAXHIIiWWNeg==}
+
+  canvas-confetti@1.9.4:
+    resolution: {integrity: sha512-yxQbJkAVrFXWNbTUjPqjF7G+g6pDotOUHGbkZq2NELZUMDpiJ85rIEazVb8GTaAptNW2miJAXbs1BtioA251Pw==}
 
   chalk@5.6.2:
     resolution: {integrity: sha512-7NzBL0rN6fMUW+f7A6Io4h40qQlG+xGmtMxfbnH/K7TAtt8JQWVQK+6g0UXKMeVJoyV5EkkNsErQ8pVD3bLHbA==}
@@ -6581,6 +6593,8 @@ snapshots:
       '@types/node': 24.10.4
     optional: true
 
+  '@types/canvas-confetti@1.9.0': {}
+
   '@types/estree@1.0.9': {}
 
   '@types/node@24.10.4':
@@ -6804,6 +6818,8 @@ snapshots:
   callsites@3.1.0: {}
 
   caniuse-lite@1.0.30001810: {}
+
+  canvas-confetti@1.9.4: {}
 
   chalk@5.6.2: {}
 
