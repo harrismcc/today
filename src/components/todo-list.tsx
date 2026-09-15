@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Plus, ChevronLeft, ChevronRight, LogOut } from "lucide-react"
 import { AnimatePresence } from "motion/react"
+import { useSwipeable } from "react-swipeable"
 import { useServerFn } from "@tanstack/react-start"
 import { TodoItem } from "./todo-item"
 import { Button } from "@/components/ui/button"
@@ -174,8 +175,24 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
     window.location.replace("/login")
   }
 
+  const changeDayFromSwipe = (event: { target: EventTarget | null }, change: number) => {
+    const target = event.target
+    if (!(target instanceof Element) || target.closest("button, input, a, li")) return
+
+    setOffset((current) => current + change)
+    play("swoosh")
+  }
+
+  const swipeHandlers = useSwipeable({
+    onSwipedLeft: ({ event }) => changeDayFromSwipe(event, 1),
+    onSwipedRight: ({ event }) => changeDayFromSwipe(event, -1),
+    delta: 48,
+    trackMouse: false,
+    preventScrollOnSwipe: false,
+  })
+
   return (
-    <section className="w-full max-w-xl">
+    <section {...swipeHandlers} className="min-h-[calc(100dvh-4rem)] w-full max-w-xl sm:min-h-0">
       <header className="mb-4 sm:mb-5">
         <div className="flex items-center justify-between">
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground sm:text-sm">{relative}</p>
