@@ -5,6 +5,7 @@ import { todos } from '@/db/schema'
 import type {
   CreateTodoInput,
   RescheduleTodoInput,
+  TodoDetailsInput,
   TodoListFilters,
   TodoStatusInput,
 } from '@/domain/todos'
@@ -33,6 +34,7 @@ export async function insertTodo(userId: string, input: CreateTodoInput) {
     id: crypto.randomUUID(),
     userId,
     text: input.text,
+    body: input.body || null,
     status: 'todo' as const,
     scheduledDate: input.scheduledDate,
     postponedAt: null,
@@ -42,6 +44,24 @@ export async function insertTodo(userId: string, input: CreateTodoInput) {
   }
 
   await db.insert(todos).values(todo).run()
+
+  return todo
+}
+
+export async function updateTodoDetails(
+  userId: string,
+  input: TodoDetailsInput,
+) {
+  const todo = await db
+    .update(todos)
+    .set({ text: input.text, body: input.body || null, updatedAt: new Date() })
+    .where(and(eq(todos.id, input.id), eq(todos.userId, userId), isNull(todos.deletedAt)))
+    .returning()
+    .get()
+
+  if (!todo) {
+    throw new Error('Todo not found')
+  }
 
   return todo
 }

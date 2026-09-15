@@ -5,12 +5,13 @@ import { useSwipeable } from "react-swipeable"
 import { useServerFn } from "@tanstack/react-start"
 import confetti from "canvas-confetti"
 import { AppMenu } from "./app-menu"
+import { TodoDetailsDialog } from "./todo-details-dialog"
 import { TodoItem } from "./todo-item"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { play } from "@foleyjs/react"
-import { createTodo, deleteTodo, getTodos, rescheduleTodo, updateTodoStatus } from "@/data/todos"
+import { createTodo, deleteTodo, getTodos, rescheduleTodo, saveTodoDetails, updateTodoStatus } from "@/data/todos"
 import type { Todo } from "@/db/schema"
 import {
   bucketTodos,
@@ -30,6 +31,7 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
   const [todoItems, setTodoItems] = useState(() => sortTodos(initialTodos))
   const [offset, setOffset] = useState(0)
   const [draft, setDraft] = useState("")
+  const [selectedTodoId, setSelectedTodoId] = useState<string | null>(null)
   const [todayKey, setTodayKey] = useState(() => localDateKey(new Date()))
   const [pendingTodoIds, setPendingTodoIds] = useState<ReadonlySet<string>>(() => new Set())
   const [isCreating, setIsCreating] = useState(false)
@@ -43,6 +45,7 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
   const createTodoMutation = useServerFn(createTodo)
   const deleteTodoMutation = useServerFn(deleteTodo)
   const rescheduleTodoMutation = useServerFn(rescheduleTodo)
+  const saveTodoDetailsMutation = useServerFn(saveTodoDetails)
   const updateTodoStatusMutation = useServerFn(updateTodoStatus)
 
   const byDay = useMemo(() => bucketTodos(todoItems), [todoItems])
@@ -118,6 +121,7 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
   const key = useMemo(() => shiftDateKey(todayKey, offset), [offset, todayKey])
   const viewed = useMemo(() => localDateFromKey(key), [key])
   const todos = byDay[key] ?? []
+  const selectedTodo = todoItems.find((todo) => todo.id === selectedTodoId)
 
   const runTodoMutation = useCallback(async <T,>(id: string, mutation: () => Promise<T>) => {
     if (pendingTodoIdsRef.current.has(id)) return undefined
@@ -192,6 +196,20 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
     localDataVersion.current += 1
     setTodoItems((current) => reconcileTodos(current, { type: "upsert", todo: updated }))
     play("swoosh")
+  }
+
+  const saveDetails = async (
+    id: string,
+    details: { text: string; body: string | null },
+  ) => {
+    const updated = await runTodoMutation(id, () =>
+      saveTodoDetailsMutation({ data: { id, ...details } }),
+    )
+    if (!updated) return false
+
+    localDataVersion.current += 1
+    setTodoItems((current) => reconcileTodos(current, { type: "upsert", todo: updated }))
+    return true
   }
 
   const addTodo = async (e: React.FormEvent) => {
@@ -286,6 +304,7 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
               key={todo.id}
               todo={todo}
               pending={pendingTodoIds.has(todo.id)}
+              onOpenDetails={setSelectedTodoId}
               onSetStatus={setStatus}
               onPostpone={postpone}
               onDelete={removeTodo}
@@ -313,6 +332,15 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
         <p role="alert" className="mt-3 text-sm text-destructive">
           {error}
         </p>
+      )}
+
+      {selectedTodo && (
+        <TodoDetailsDialog
+          key={selectedTodo.id}
+          todo={selectedTodo}
+          onClose={() => setSelectedTodoId(null)}
+          onSave={(details) => saveDetails(selectedTodo.id, details)}
+        />
       )}
     </section>
   )

@@ -316,6 +316,7 @@ export const todos = sqliteTable(
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
     text: text('text').notNull(),
+    body: text('body'),
     status: text('status', { enum: todoStatuses }).notNull().default('todo'),
     scheduledDate: text('scheduled_date').notNull(),
     postponedAt: integer('postponed_at', { mode: 'timestamp_ms' }),

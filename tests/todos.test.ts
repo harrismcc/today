@@ -8,6 +8,7 @@ import {
   millisecondsUntilNextLocalDay,
   reconcileTodos,
   shiftDateKey,
+  todoDetailsInputSchema,
   todoStatusSchema,
 } from '../src/domain/todos.ts'
 
@@ -26,8 +27,20 @@ test('shared input contracts reject impossible dates and the retired postponed s
   assert.equal(dateKeySchema.safeParse('2028-02-29').success, true)
   assert.equal(todoStatusSchema.safeParse('postponed').success, false)
   assert.deepEqual(
-    createTodoInputSchema.parse({ text: '  future task  ', scheduledDate: '2026-10-01' }),
-    { text: 'future task', scheduledDate: '2026-10-01' },
+    createTodoInputSchema.parse({
+      text: '  future task  ',
+      body: '  Notes at https://example.com  ',
+      scheduledDate: '2026-10-01',
+    }),
+    {
+      text: 'future task',
+      body: 'Notes at https://example.com',
+      scheduledDate: '2026-10-01',
+    },
+  )
+  assert.deepEqual(
+    todoDetailsInputSchema.parse({ id: 'todo', text: ' Updated ', body: null }),
+    { id: 'todo', text: 'Updated', body: null },
   )
 })
 

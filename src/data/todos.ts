@@ -3,6 +3,7 @@ import { createServerFn } from '@tanstack/react-start'
 import {
   createTodoInputSchema,
   rescheduleTodoInputSchema,
+  todoDetailsInputSchema,
   todoIdInputSchema,
   todoStatusInputSchema,
 } from '@/domain/todos'
@@ -23,6 +24,16 @@ export const createTodo = createServerFn({ method: 'POST' })
 
     const { insertTodo } = await import('./todos.server')
     return insertTodo(session.user.id, data)
+  })
+
+export const saveTodoDetails = createServerFn({ method: 'POST' })
+  .validator((input) => todoDetailsInputSchema.parse(input))
+  .handler(async ({ data }) => {
+    const { requireSession } = await import('@/lib/auth-session.server')
+    const session = await requireSession()
+
+    const { updateTodoDetails } = await import('./todos.server')
+    return updateTodoDetails(session.user.id, data)
   })
 
 export const updateTodoStatus = createServerFn({ method: 'POST' })

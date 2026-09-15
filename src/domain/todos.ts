@@ -14,6 +14,7 @@ export const dateKeySchema = z.string().refine((value) => {
 }, 'Expected a valid date in YYYY-MM-DD format')
 
 export const todoTextSchema = z.string().trim().min(1, 'Todo text is required')
+export const todoBodySchema = z.string().trim()
 export const todoStatusSchema = z.enum(todoStatuses)
 export const todoIdSchema = z.string().min(1, 'Todo id is required')
 
@@ -24,7 +25,14 @@ export const todoListFiltersSchema = z.object({
 
 export const createTodoInputSchema = z.object({
   text: todoTextSchema,
+  body: todoBodySchema.optional(),
   scheduledDate: dateKeySchema,
+})
+
+export const todoDetailsInputSchema = z.object({
+  id: todoIdSchema,
+  text: todoTextSchema,
+  body: todoBodySchema.nullable(),
 })
 
 export const todoStatusInputSchema = z.object({
@@ -41,6 +49,7 @@ export const todoIdInputSchema = z.object({ id: todoIdSchema })
 
 export type TodoListFilters = z.infer<typeof todoListFiltersSchema>
 export type CreateTodoInput = z.infer<typeof createTodoInputSchema>
+export type TodoDetailsInput = z.infer<typeof todoDetailsInputSchema>
 export type TodoStatusInput = z.infer<typeof todoStatusInputSchema>
 export type RescheduleTodoInput = z.infer<typeof rescheduleTodoInputSchema>
 

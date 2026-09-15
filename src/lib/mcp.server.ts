@@ -15,11 +15,13 @@ import {
   rescheduleTodoToDate,
   setTodoStatus,
   softDeleteTodo,
+  updateTodoDetails,
 } from '@/data/todos.server'
 import {
   createTodoInputSchema,
   dateKeySchema,
   rescheduleTodoInputSchema,
+  todoDetailsInputSchema,
   todoIdInputSchema,
   todoListFiltersSchema,
   todoStatusInputSchema,
@@ -35,6 +37,7 @@ import {
 const todoSchema = z.object({
   id: z.string(),
   text: z.string(),
+  body: z.string().nullable(),
   status: todoStatusSchema,
   scheduledDate: dateKeySchema,
   postponedAt: z.string().nullable(),
@@ -46,6 +49,7 @@ function serializeTodo(todo: Todo) {
   return {
     id: todo.id,
     text: todo.text,
+    body: todo.body,
     status: todo.status,
     scheduledDate: todo.scheduledDate,
     postponedAt: todo.postponedAt?.toISOString() ?? null,
@@ -92,14 +96,36 @@ const mcpHandler = createMcpHandler(({ authInfo }) => {
     {
       title: 'Create todo',
       description:
-        'Create a todo for the signed-in user on a YYYY-MM-DD calendar date.',
+        'Create a todo, optionally with a longer body containing notes or links, on a YYYY-MM-DD calendar date.',
       inputSchema: createTodoInputSchema,
       outputSchema: z.object({ todo: todoSchema }),
       annotations: { destructiveHint: false },
     },
-    async ({ text, scheduledDate }) => {
+    async ({ text, body, scheduledDate }) => {
       const output = {
-        todo: serializeTodo(await insertTodo(userId, { text, scheduledDate })),
+        todo: serializeTodo(await insertTodo(userId, { text, body, scheduledDate })),
+      }
+
+      return {
+        content: [{ type: 'text', text: JSON.stringify(output) }],
+        structuredContent: output,
+      }
+    },
+  )
+
+  server.registerTool(
+    'update_todo_details',
+    {
+      title: 'Update todo details',
+      description:
+        'Update the title and optional body of one of the signed-in user’s todos. Send null to clear the body.',
+      inputSchema: todoDetailsInputSchema,
+      outputSchema: z.object({ todo: todoSchema }),
+      annotations: { destructiveHint: false },
+    },
+    async ({ id, text, body }) => {
+      const output = {
+        todo: serializeTodo(await updateTodoDetails(userId, { id, text, body })),
       }
 
       return {
