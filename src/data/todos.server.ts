@@ -39,6 +39,7 @@ export async function insertTodo(userId: string, input: CreateTodoInput) {
     status: 'todo' as const,
     scheduledDate: input.scheduledDate,
     postponedAt: null,
+    deferredFromDate: null,
     createdAt: now,
     updatedAt: now,
     deletedAt: null,
@@ -99,6 +100,13 @@ export async function rescheduleTodoToDate(
         THEN coalesce(${todos.postponedAt}, ${now.getTime()})
         ELSE ${todos.postponedAt}
       END`,
+      deferredFromDate: sql`CASE
+        WHEN ${input.scheduledDate} > ${todos.scheduledDate}
+          AND ${todos.deferredFromDate} IS NULL
+          AND ${todos.postponedAt} IS NULL
+        THEN ${todos.scheduledDate}
+        ELSE ${todos.deferredFromDate}
+      END`,
       updatedAt: now,
     })
     .where(and(eq(todos.id, input.id), eq(todos.userId, userId), isNull(todos.deletedAt)))
@@ -123,6 +131,11 @@ export async function acceptOverdueTodos(
     .set({
       scheduledDate: input.scheduledDate,
       postponedAt: sql`coalesce(${todos.postponedAt}, ${now.getTime()})`,
+      deferredFromDate: sql`CASE
+        WHEN ${todos.deferredFromDate} IS NULL AND ${todos.postponedAt} IS NULL
+        THEN ${todos.scheduledDate}
+        ELSE ${todos.deferredFromDate}
+      END`,
       updatedAt: now,
     })
     .where(

@@ -138,6 +138,15 @@ export function localDateFromKey(dateKey: string) {
   return new Date(year, month - 1, day)
 }
 
+export function calendarDaysBetween(startDateKey: string, endDateKey: string) {
+  const [startYear, startMonth, startDay] = startDateKey.split('-').map(Number)
+  const [endYear, endMonth, endDay] = endDateKey.split('-').map(Number)
+  const start = Date.UTC(startYear, startMonth - 1, startDay)
+  const end = Date.UTC(endYear, endMonth - 1, endDay)
+
+  return Math.max(0, Math.floor((end - start) / (24 * 60 * 60 * 1000)))
+}
+
 export function millisecondsUntilNextLocalDay(now: Date) {
   const nextDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
   return Math.max(1, nextDay.getTime() - now.getTime())

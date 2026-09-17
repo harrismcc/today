@@ -3,6 +3,7 @@ import test from 'node:test'
 
 import {
   bucketTodos,
+  calendarDaysBetween,
   createTodoInputSchema,
   dateKeySchema,
   getOverdueTodos,
@@ -106,4 +107,10 @@ test('calendar-day math advances across DST using date keys and local midnight',
 
   assert.equal(shiftDateKey('2026-03-08', 1), '2026-03-09')
   assert.equal(millisecondsUntilNextLocalDay(springForwardMidnight), 23 * 60 * 60 * 1000)
+})
+
+test('deferred days measure calendar distance from the original scheduled date', () => {
+  assert.equal(calendarDaysBetween('2026-09-15', '2026-09-16'), 1)
+  assert.equal(calendarDaysBetween('2026-09-15', '2026-09-18'), 3)
+  assert.equal(calendarDaysBetween('2026-09-16', '2026-09-15'), 0)
 })

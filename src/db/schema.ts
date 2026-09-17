@@ -320,6 +320,7 @@ export const todos = sqliteTable(
     status: text('status', { enum: todoStatuses }).notNull().default('todo'),
     scheduledDate: text('scheduled_date').notNull(),
     postponedAt: integer('postponed_at', { mode: 'timestamp_ms' }),
+    deferredFromDate: text('deferred_from_date'),
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
     deletedAt: integer('deleted_at', { mode: 'timestamp_ms' }),

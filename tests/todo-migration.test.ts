@@ -82,3 +82,31 @@ test('0008 adds optional todo bodies without changing existing rows', () => {
     { id: 'existing', body: null },
   ])
 })
+
+test('0009 leaves historical deferral baselines unknown rather than guessing from timestamps', () => {
+  const database = new DatabaseSync(':memory:')
+  database.exec(`
+    CREATE TABLE todos (
+      id text PRIMARY KEY NOT NULL,
+      scheduled_date text NOT NULL,
+      postponed_at integer
+    );
+    INSERT INTO todos VALUES
+      ('new', '2026-09-18', NULL),
+      ('postponed', '2026-09-18', 1789488000000);
+  `)
+
+  database.exec(
+    readFileSync(new URL('../drizzle/0009_clumsy_king_bedlam.sql', import.meta.url), 'utf8'),
+  )
+
+  const rows = database
+    .prepare('SELECT id, deferred_from_date AS deferredFromDate FROM todos ORDER BY id')
+    .all()
+    .map((row) => ({ ...row }))
+
+  assert.deepEqual(rows, [
+    { id: 'new', deferredFromDate: null },
+    { id: 'postponed', deferredFromDate: null },
+  ])
+})

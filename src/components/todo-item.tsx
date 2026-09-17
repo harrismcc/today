@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "motion/react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { Todo } from "@/db/schema"
-import type { TodoStatus } from "@/domain/todos"
+import { calendarDaysBetween, type TodoStatus } from "@/domain/todos"
 
 interface TodoItemProps {
   todo: Todo
@@ -16,6 +16,9 @@ interface TodoItemProps {
 
 export function TodoItem({ todo, pending, onOpenDetails, onSetStatus, onPostpone, onDelete }: TodoItemProps) {
   const { id, text, body, status } = todo
+  const deferredDays = todo.deferredFromDate
+    ? calendarDaysBetween(todo.deferredFromDate, todo.scheduledDate)
+    : 0
 
   // Clicking an active status again returns the item to plain "todo".
   const toggle = (next: TodoStatus, target: HTMLButtonElement) => {
@@ -92,6 +95,17 @@ export function TodoItem({ todo, pending, onOpenDetails, onSetStatus, onPostpone
       </button>
 
       <span className="mt-0.5 inline-flex shrink-0 items-center gap-1 whitespace-nowrap sm:mt-1 sm:gap-1.5">
+        {deferredDays > 0 && (
+          <span
+            title={`Deferred by ${deferredDays} ${deferredDays === 1 ? "day" : "days"}`}
+            className="text-xs font-semibold leading-none text-postponed tabular-nums"
+          >
+            <span aria-hidden="true">{deferredDays}</span>
+            <span className="sr-only">
+              Deferred by {deferredDays} {deferredDays === 1 ? "day" : "days"}
+            </span>
+          </span>
+        )}
         <Button
           type="button"
           variant="quiet"
