@@ -45,6 +45,10 @@ export const rescheduleTodoInputSchema = z.object({
   scheduledDate: dateKeySchema,
 })
 
+export const acceptOverdueTodosInputSchema = z.object({
+  scheduledDate: dateKeySchema,
+})
+
 export const todoIdInputSchema = z.object({ id: todoIdSchema })
 
 export type TodoListFilters = z.infer<typeof todoListFiltersSchema>
@@ -52,11 +56,16 @@ export type CreateTodoInput = z.infer<typeof createTodoInputSchema>
 export type TodoDetailsInput = z.infer<typeof todoDetailsInputSchema>
 export type TodoStatusInput = z.infer<typeof todoStatusInputSchema>
 export type RescheduleTodoInput = z.infer<typeof rescheduleTodoInputSchema>
+export type AcceptOverdueTodosInput = z.infer<typeof acceptOverdueTodosInputSchema>
 
 type OrderedTodo = {
   id: string
   scheduledDate: string
   createdAt: Date
+}
+
+type SchedulableTodo = OrderedTodo & {
+  status: TodoStatus
 }
 
 export function sortTodos<T extends OrderedTodo>(todos: readonly T[]) {
@@ -77,9 +86,19 @@ export function bucketTodos<T extends OrderedTodo>(todos: readonly T[]) {
   }, {})
 }
 
+export function getOverdueTodos<T extends SchedulableTodo>(
+  todos: readonly T[],
+  todayKey: string,
+) {
+  return sortTodos(
+    todos.filter((todo) => todo.status !== 'done' && todo.scheduledDate < todayKey),
+  )
+}
+
 export type TodoReconciliation<T> =
   | { type: 'replace'; todos: readonly T[] }
   | { type: 'upsert'; todo: T }
+  | { type: 'upsert-many'; todos: readonly T[] }
   | { type: 'remove'; id: string }
 
 export function reconcileTodos<T extends OrderedTodo>(
@@ -89,6 +108,13 @@ export function reconcileTodos<T extends OrderedTodo>(
   if (reconciliation.type === 'replace') return sortTodos(reconciliation.todos)
   if (reconciliation.type === 'remove') {
     return sortTodos(current.filter((todo) => todo.id !== reconciliation.id))
+  }
+  if (reconciliation.type === 'upsert-many') {
+    const updatedIds = new Set(reconciliation.todos.map((todo) => todo.id))
+    return sortTodos([
+      ...current.filter((todo) => !updatedIds.has(todo.id)),
+      ...reconciliation.todos,
+    ])
   }
 
   return sortTodos([

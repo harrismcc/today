@@ -5,6 +5,7 @@ import {
   bucketTodos,
   createTodoInputSchema,
   dateKeySchema,
+  getOverdueTodos,
   millisecondsUntilNextLocalDay,
   reconcileTodos,
   shiftDateKey,
@@ -61,6 +62,43 @@ test('reconciliation moves an updated todo between canonical buckets without dup
     'later-created',
   ])
   assert.equal(reconciled.filter(({ id }) => id === moved.id).length, 1)
+})
+
+test('bulk reconciliation adds unseen todos and replaces existing rows', () => {
+  const current = [
+    todo('existing', '2026-09-14'),
+    todo('unchanged', '2026-09-15'),
+  ]
+  const accepted = [
+    { ...current[0], scheduledDate: '2026-09-16' },
+    todo('unseen', '2026-09-16', 10),
+  ]
+
+  const reconciled = reconcileTodos(current, { type: 'upsert-many', todos: accepted })
+
+  assert.deepEqual(
+    reconciled.map(({ id, scheduledDate }) => ({ id, scheduledDate })),
+    [
+      { id: 'unchanged', scheduledDate: '2026-09-15' },
+      { id: 'existing', scheduledDate: '2026-09-16' },
+      { id: 'unseen', scheduledDate: '2026-09-16' },
+    ],
+  )
+})
+
+test('overdue todos include only unfinished tasks before the local day', () => {
+  const todos = [
+    { ...todo('oldest', '2026-09-13'), status: 'todo' as const },
+    { ...todo('done-earlier', '2026-09-14'), status: 'done' as const },
+    { ...todo('earlier', '2026-09-14'), status: 'todo' as const },
+    { ...todo('today', '2026-09-15'), status: 'todo' as const },
+    { ...todo('future', '2026-09-16'), status: 'todo' as const },
+  ]
+
+  assert.deepEqual(
+    getOverdueTodos(todos, '2026-09-15').map(({ id }) => id),
+    ['oldest', 'earlier'],
+  )
 })
 
 test('calendar-day math advances across DST using date keys and local midnight', () => {

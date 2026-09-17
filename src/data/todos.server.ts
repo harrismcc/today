@@ -1,8 +1,9 @@
-import { and, asc, eq, isNull, sql } from 'drizzle-orm'
+import { and, asc, eq, isNull, lt, sql } from 'drizzle-orm'
 
 import { db } from '@/db/index.server'
 import { todos } from '@/db/schema'
 import type {
+  AcceptOverdueTodosInput,
   CreateTodoInput,
   RescheduleTodoInput,
   TodoDetailsInput,
@@ -109,6 +110,31 @@ export async function rescheduleTodoToDate(
   }
 
   return todo
+}
+
+export async function acceptOverdueTodos(
+  userId: string,
+  input: AcceptOverdueTodosInput,
+) {
+  const now = new Date()
+
+  return db
+    .update(todos)
+    .set({
+      scheduledDate: input.scheduledDate,
+      postponedAt: sql`coalesce(${todos.postponedAt}, ${now.getTime()})`,
+      updatedAt: now,
+    })
+    .where(
+      and(
+        eq(todos.userId, userId),
+        eq(todos.status, 'todo'),
+        lt(todos.scheduledDate, input.scheduledDate),
+        isNull(todos.deletedAt),
+      ),
+    )
+    .returning()
+    .all()
 }
 
 export async function softDeleteTodo(userId: string, id: string) {

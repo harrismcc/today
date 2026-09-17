@@ -23,8 +23,9 @@ import { flushSync } from 'react-dom'
 
 import { AppMenu } from '@/components/app-menu'
 import { Button, buttonVariants } from '@/components/ui/button'
-import { deferTodo, deleteTodo } from '@/data/todos'
+import { deleteTodo, rescheduleTodo } from '@/data/todos'
 import type { Todo } from '@/db/schema'
+import { getOverdueTodos, localDateKey } from '@/domain/todos'
 
 const SWIPE_DISTANCE = 140
 const SWIPE_VELOCITY = 900
@@ -51,21 +52,8 @@ type CleanupAction =
   | { type: 'commit-succeeded'; todoId: string }
   | { type: 'commit-failed' }
 
-function dateKey(date: Date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-}
-
-function tomorrowKey() {
-  const date = new Date()
-  date.setHours(0, 0, 0, 0)
-  date.setDate(date.getDate() + 1)
-
-  return dateKey(date)
-}
-
 function eligibleTodos(todos: Todo[]) {
-  const today = dateKey(new Date())
-  return todos.filter((todo) => todo.status !== 'done' && todo.scheduledDate <= today)
+  return getOverdueTodos(todos, localDateKey(new Date()))
 }
 
 function initialCleanupState(initialTodos: Todo[]): CleanupState {
@@ -133,7 +121,7 @@ function CleanupCard({
   const shouldReduceMotion = useReducedMotion()
   const rotate = useTransform(x, [-200, 0, 200], [-10, 0, 10])
   const deleteOpacity = useTransform(x, [-100, -28, 0], [1, 0.25, 0])
-  const tomorrowOpacity = useTransform(x, [0, 28, 100], [0, 0.25, 1])
+  const todayOpacity = useTransform(x, [0, 28, 100], [0, 0.25, 1])
 
   useEffect(() => {
     if (interaction.phase === 'entering') cardRef.current?.focus()
@@ -208,10 +196,10 @@ function CleanupCard({
       </motion.span>
       <motion.span
         aria-hidden="true"
-        style={{ opacity: tomorrowOpacity }}
+        style={{ opacity: todayOpacity }}
         className="absolute top-4 left-4 -rotate-6 rounded-md border-2 border-postponed px-2 py-1 text-xs font-semibold tracking-[0.12em] text-postponed uppercase"
       >
-        Tomorrow
+        Today
       </motion.span>
       <p className="font-hand text-3xl leading-snug text-foreground sm:text-4xl">{todo.text}</p>
     </motion.article>
@@ -222,7 +210,7 @@ export function CleanupMode({ initialTodos }: { initialTodos: Todo[] }) {
   const [state, dispatch] = useReducer(cleanupReducer, initialTodos, initialCleanupState)
   const instructionsId = useId()
   const deleteTodoMutation = useServerFn(deleteTodo)
-  const deferTodoMutation = useServerFn(deferTodo)
+  const rescheduleTodoMutation = useServerFn(rescheduleTodo)
   const current = state.todos[0]
   const isInputLocked = state.interaction.phase !== 'ready'
 
@@ -245,7 +233,9 @@ export function CleanupMode({ initialTodos }: { initialTodos: Todo[] }) {
           await deleteTodoMutation({ data: { id: current.id } })
           play('drop')
         } else {
-          await deferTodoMutation({ data: { id: current.id, scheduledDate: tomorrowKey() } })
+          await rescheduleTodoMutation({
+            data: { id: current.id, scheduledDate: localDateKey(new Date()) },
+          })
           play('swoosh')
         }
 
@@ -255,7 +245,7 @@ export function CleanupMode({ initialTodos }: { initialTodos: Todo[] }) {
         dispatch({ type: 'commit-failed' })
       }
     },
-    [current, deferTodoMutation, deleteTodoMutation, state.interaction.phase],
+    [current, deleteTodoMutation, rescheduleTodoMutation, state.interaction.phase],
   )
 
   const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
@@ -272,6 +262,7 @@ export function CleanupMode({ initialTodos }: { initialTodos: Todo[] }) {
       <header className="flex items-center justify-between">
         <Link
           to="/"
+          reloadDocument
           aria-label="Back to main list"
           data-foley-click="swoosh"
           className={buttonVariants({
@@ -297,7 +288,7 @@ export function CleanupMode({ initialTodos }: { initialTodos: Todo[] }) {
       <div className="mt-3">
         {current && (
           <p className="mb-3 hidden text-center text-xs text-muted-foreground sm:block">
-            Focused card: ← delete · → tomorrow
+            Focused card: ← delete · → today
           </p>
         )}
         <div className="flex items-center gap-3 sm:gap-4">
@@ -342,6 +333,7 @@ export function CleanupMode({ initialTodos }: { initialTodos: Todo[] }) {
                   <p className="mt-2 text-sm text-muted-foreground">Nothing left to review.</p>
                   <Link
                     to="/"
+                    reloadDocument
                     data-foley-click="swoosh"
                     className={buttonVariants({ className: 'mt-6' })}
                   >
@@ -361,7 +353,7 @@ export function CleanupMode({ initialTodos }: { initialTodos: Todo[] }) {
                 sound={false}
                 disabled={isInputLocked}
                 onClick={() => void actOnCurrent(1)}
-                aria-label="Move this task to tomorrow"
+                aria-label="Move this task to today"
                 className="rounded-md hover:text-postponed"
               >
                 <ArrowRight className="size-5" strokeWidth={2.5} />
@@ -374,7 +366,7 @@ export function CleanupMode({ initialTodos }: { initialTodos: Todo[] }) {
           <>
             <p id={instructionsId} className="sr-only">
               With this task card focused, press Left Arrow to delete it or Right Arrow to move it
-              to tomorrow.
+              to today.
             </p>
             <div className="mt-5 flex items-center justify-center gap-8 sm:hidden">
               <Button
@@ -396,14 +388,14 @@ export function CleanupMode({ initialTodos }: { initialTodos: Todo[] }) {
                 sound={false}
                 disabled={isInputLocked}
                 onClick={() => void actOnCurrent(1)}
-                aria-label="Move this task to tomorrow"
+                aria-label="Move this task to today"
                 className="rounded-md hover:text-postponed"
               >
                 <ArrowRight className="size-5" strokeWidth={2.5} />
               </Button>
             </div>
             <p className="mt-3 text-center text-xs text-muted-foreground sm:hidden">
-              Swipe left to delete · right for tomorrow
+              Swipe left to delete · right for today
             </p>
           </>
         )}

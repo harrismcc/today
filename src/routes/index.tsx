@@ -5,6 +5,7 @@ import { getTodos } from '@/data/todos'
 import { getSession } from '@/lib/auth-functions'
 
 export const Route = createFileRoute('/')({
+  gcTime: 0,
   beforeLoad: async () => {
     if (!(await getSession())) throw redirect({ to: '/login' })
   },

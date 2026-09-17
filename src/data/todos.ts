@@ -1,6 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 
 import {
+  acceptOverdueTodosInputSchema,
   createTodoInputSchema,
   rescheduleTodoInputSchema,
   todoDetailsInputSchema,
@@ -56,8 +57,15 @@ export const rescheduleTodo = createServerFn({ method: 'POST' })
     return rescheduleTodoToDate(session.user.id, data)
   })
 
-// Compatibility alias while CleanupMode migrates to the canonical absolute operation.
-export const deferTodo = rescheduleTodo
+export const acceptOverdueTodos = createServerFn({ method: 'POST' })
+  .validator((input) => acceptOverdueTodosInputSchema.parse(input))
+  .handler(async ({ data }) => {
+    const { requireSession } = await import('@/lib/auth-session.server')
+    const session = await requireSession()
+
+    const { acceptOverdueTodos: acceptTodos } = await import('./todos.server')
+    return acceptTodos(session.user.id, data)
+  })
 
 export const deleteTodo = createServerFn({ method: 'POST' })
   .validator((input) => todoIdInputSchema.parse(input))

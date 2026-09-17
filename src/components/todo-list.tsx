@@ -1,20 +1,38 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Plus, ChevronLeft, ChevronRight } from "lucide-react"
-import { AnimatePresence } from "motion/react"
+import { CheckCheck, ChevronLeft, ChevronRight, ListChecks, Plus } from "lucide-react"
+import { AnimatePresence, motion } from "motion/react"
 import { useSwipeable } from "react-swipeable"
+import { Link } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import confetti from "canvas-confetti"
 import { AppMenu } from "./app-menu"
 import { TodoDetailsDialog } from "./todo-details-dialog"
 import { TodoItem } from "./todo-item"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { play } from "@foleyjs/react"
-import { createTodo, deleteTodo, getTodos, rescheduleTodo, saveTodoDetails, updateTodoStatus } from "@/data/todos"
+import {
+  acceptOverdueTodos,
+  createTodo,
+  deleteTodo,
+  getTodos,
+  rescheduleTodo,
+  saveTodoDetails,
+  updateTodoStatus,
+} from "@/data/todos"
 import type { Todo } from "@/db/schema"
 import {
   bucketTodos,
+  getOverdueTodos,
   localDateFromKey,
   localDateKey,
   millisecondsUntilNextLocalDay,
@@ -23,6 +41,7 @@ import {
   sortTodos,
   type TodoStatus,
 } from "@/domain/todos"
+import { cn } from "@/lib/utils"
 
 const TODO_STALE_TIME = 5 * 60 * 1000
 const STALE_CHECK_INTERVAL = 60 * 1000
@@ -35,13 +54,16 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
   const [todayKey, setTodayKey] = useState(() => localDateKey(new Date()))
   const [pendingTodoIds, setPendingTodoIds] = useState<ReadonlySet<string>>(() => new Set())
   const [isCreating, setIsCreating] = useState(false)
+  const [isAcceptingOverdue, setIsAcceptingOverdue] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const lastFetchedAt = useRef(Date.now())
   const localDataVersion = useRef(0)
   const refreshInFlight = useRef<Promise<unknown> | null>(null)
   const pendingTodoIdsRef = useRef(new Set<string>())
   const createInFlight = useRef(false)
+  const acceptOverdueInFlight = useRef(false)
   const getTodosQuery = useServerFn(getTodos)
+  const acceptOverdueTodosMutation = useServerFn(acceptOverdueTodos)
   const createTodoMutation = useServerFn(createTodo)
   const deleteTodoMutation = useServerFn(deleteTodo)
   const rescheduleTodoMutation = useServerFn(rescheduleTodo)
@@ -49,6 +71,10 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
   const updateTodoStatusMutation = useServerFn(updateTodoStatus)
 
   const byDay = useMemo(() => bucketTodos(todoItems), [todoItems])
+  const overdueTodos = useMemo(
+    () => getOverdueTodos(todoItems, todayKey),
+    [todoItems, todayKey],
+  )
 
   const refreshTodos = useCallback(() => {
     if (refreshInFlight.current) return refreshInFlight.current
@@ -124,7 +150,7 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
   const selectedTodo = todoItems.find((todo) => todo.id === selectedTodoId)
 
   const runTodoMutation = useCallback(async <T,>(id: string, mutation: () => Promise<T>) => {
-    if (pendingTodoIdsRef.current.has(id)) return undefined
+    if (acceptOverdueInFlight.current || pendingTodoIdsRef.current.has(id)) return undefined
 
     pendingTodoIdsRef.current.add(id)
     setPendingTodoIds(new Set(pendingTodoIdsRef.current))
@@ -215,7 +241,7 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
   const addTodo = async (e: React.FormEvent) => {
     e.preventDefault()
     const text = draft.trim()
-    if (!text || createInFlight.current) return
+    if (!text || createInFlight.current || acceptOverdueInFlight.current) return
 
     createInFlight.current = true
     setIsCreating(true)
@@ -231,6 +257,35 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
     } finally {
       createInFlight.current = false
       setIsCreating(false)
+    }
+  }
+
+  const acceptAllOverdue = async () => {
+    if (
+      acceptOverdueInFlight.current ||
+      createInFlight.current ||
+      pendingTodoIdsRef.current.size > 0
+    ) return
+
+    acceptOverdueInFlight.current = true
+    setIsAcceptingOverdue(true)
+    setError(null)
+
+    try {
+      const acceptedTodos = await acceptOverdueTodosMutation({
+        data: { scheduledDate: todayKey },
+      })
+      localDataVersion.current += 1
+      setTodoItems((current) =>
+        reconcileTodos(current, { type: "upsert-many", todos: acceptedTodos }),
+      )
+      play("success")
+    } catch {
+      setError("Those tasks could not be moved to today. Try again.")
+      play("error")
+    } finally {
+      acceptOverdueInFlight.current = false
+      setIsAcceptingOverdue(false)
     }
   }
 
@@ -297,13 +352,71 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
         <h1 className="mt-1 font-hand text-3xl leading-tight text-foreground sm:mt-2 sm:text-5xl">{fullDate}</h1>
       </header>
 
+      <AnimatePresence initial={false}>
+        {offset === 0 && overdueTodos.length > 0 && (
+          <motion.div
+            key="overdue-todos"
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -2 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
+          >
+            <Card size="sm" className="mb-5 gap-3">
+              <CardHeader>
+                <CardTitle>From earlier</CardTitle>
+                <CardDescription>
+                  {overdueTodos.length} unfinished {overdueTodos.length === 1 ? "task" : "tasks"}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ul className="divide-y divide-border/60 border-y border-border/60">
+                  {overdueTodos.map((todo) => (
+                    <li key={todo.id} className="py-2 font-hand text-lg leading-relaxed">
+                      {todo.text}
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+              <CardFooter className="gap-2">
+                <Link
+                  to="/cleanup"
+                  data-foley-click="swoosh"
+                  aria-disabled={isAcceptingOverdue}
+                  tabIndex={isAcceptingOverdue ? -1 : undefined}
+                  onClick={(event) => {
+                    if (acceptOverdueInFlight.current) event.preventDefault()
+                  }}
+                  className={cn(
+                    buttonVariants({ variant: "outline", className: "flex-1" }),
+                    isAcceptingOverdue && "pointer-events-none opacity-50",
+                  )}
+                >
+                  <ListChecks data-icon="inline-start" />
+                  Review
+                </Link>
+                <Button
+                  type="button"
+                  sound={false}
+                  disabled={isAcceptingOverdue || isCreating || pendingTodoIds.size > 0}
+                  onClick={() => void acceptAllOverdue()}
+                  className="flex-1"
+                >
+                  <CheckCheck data-icon="inline-start" />
+                  {isAcceptingOverdue ? "Accepting…" : "Accept all"}
+                </Button>
+              </CardFooter>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <ul key={key} className="divide-y divide-border/60">
         <AnimatePresence initial={false} mode="popLayout">
           {todos.map((todo) => (
             <TodoItem
               key={todo.id}
               todo={todo}
-              pending={pendingTodoIds.has(todo.id)}
+              pending={isAcceptingOverdue || pendingTodoIds.has(todo.id)}
               onOpenDetails={setSelectedTodoId}
               onSetStatus={setStatus}
               onPostpone={postpone}
@@ -323,7 +436,7 @@ export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
           onChange={(e) => setDraft(e.target.value)}
           placeholder={offset === 0 ? "Add something for today…" : "Add something…"}
           aria-label="Add a new todo"
-          disabled={isCreating}
+          disabled={isCreating || isAcceptingOverdue}
           className="min-w-0 flex-1 bg-transparent font-hand text-lg leading-relaxed text-foreground placeholder:text-muted-foreground/70 focus:outline-none sm:text-xl"
         />
       </form>
